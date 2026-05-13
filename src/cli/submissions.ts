@@ -18,7 +18,8 @@ const getArg = (name: string) => {
 
 const fieldLabels = {
   submissionNo: '提交编号',
-  createdAt: '提交时间',
+  createdAt: '提交时间（北京时间）',
+  updatedAt: '更新时间（北京时间）',
   status: '报告状态',
   fullName: '姓名（拼音/英文）',
   gender: '性别',
@@ -35,6 +36,24 @@ const fieldLabels = {
   selectedRegions: '期望对比国家/地区',
   locale: '页面语言',
 } as const
+
+const beijingDateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+})
+
+const formatBeijingDateTime = (value: unknown) => {
+  if (!value) return ''
+  const date = value instanceof Date ? value : new Date(String(value))
+  if (Number.isNaN(date.getTime())) return value
+  return beijingDateTimeFormatter.format(date).replace(/\//g, '-')
+}
 
 const valueLabels: Record<string, Record<string, string>> = {
   status: {
@@ -96,6 +115,9 @@ const valueLabels: Record<string, Record<string, string>> = {
 }
 
 const labelValue = (field: keyof typeof fieldLabels, value: unknown) => {
+  if (field === 'createdAt' || field === 'updatedAt') {
+    return formatBeijingDateTime(value)
+  }
   if (Array.isArray(value)) {
     return value.map((item) => valueLabels[field]?.[String(item)] || String(item)).join('、')
   }
@@ -105,6 +127,7 @@ const labelValue = (field: keyof typeof fieldLabels, value: unknown) => {
 const normalizeForOutput = (row: ReportSubmissionRow) => ({
   submissionNo: row.submission_no,
   createdAt: row.created_at,
+  updatedAt: row.updated_at,
   status: row.report_status,
   fullName: row.full_name,
   gender: row.gender,
@@ -139,6 +162,7 @@ const toCsv = (rows: ReturnType<typeof normalizeForOutput>[]) => {
   const fields = [
     'submissionNo',
     'createdAt',
+    'updatedAt',
     'status',
     'fullName',
     'gender',
@@ -168,7 +192,7 @@ try {
     const rows = await listReportSubmissions(limit)
     console.table(rows.map((row) => ({
       提交编号: row.submission_no,
-      提交时间: row.created_at,
+      '提交时间（北京时间）': formatBeijingDateTime(row.created_at),
       报告状态: labelValue('status', row.report_status),
       姓名: row.full_name,
       邮箱: row.email,
