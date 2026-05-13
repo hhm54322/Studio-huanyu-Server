@@ -18,12 +18,14 @@ const getArg = (name: string) => {
 
 const fieldLabels = {
   submissionNo: '提交编号',
-  createdAt: '提交时间（北京时间）',
-  updatedAt: '更新时间（北京时间）',
+  createdAt: '提交时间（原始）',
+  createdAtBeijing: '提交时间（北京时间）',
+  updatedAt: '更新时间（原始）',
+  updatedAtBeijing: '更新时间（北京时间）',
   status: '报告状态',
   fullName: '姓名（拼音/英文）',
   gender: '性别',
-  dateOfBirth: '出生日期',
+  dateOfBirth: '出生日期（当地时间）',
   nationality: '国籍',
   idType: '证件类型',
   idNumber: '证件号码',
@@ -53,6 +55,20 @@ const formatBeijingDateTime = (value: unknown) => {
   const date = value instanceof Date ? value : new Date(String(value))
   if (Number.isNaN(date.getTime())) return value
   return beijingDateTimeFormatter.format(date).replace(/\//g, '-')
+}
+
+const formatLocalDate = (value: unknown) => {
+  if (!value) return ''
+  const text = String(value)
+  const dateOnly = text.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (dateOnly) return dateOnly[1]
+  const date = value instanceof Date ? value : new Date(text)
+  if (Number.isNaN(date.getTime())) return value
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
 }
 
 const valueLabels: Record<string, Record<string, string>> = {
@@ -115,9 +131,10 @@ const valueLabels: Record<string, Record<string, string>> = {
 }
 
 const labelValue = (field: keyof typeof fieldLabels, value: unknown) => {
-  if (field === 'createdAt' || field === 'updatedAt') {
+  if (field === 'createdAtBeijing' || field === 'updatedAtBeijing') {
     return formatBeijingDateTime(value)
   }
+  if (field === 'dateOfBirth') return formatLocalDate(value)
   if (Array.isArray(value)) {
     return value.map((item) => valueLabels[field]?.[String(item)] || String(item)).join('、')
   }
@@ -127,7 +144,9 @@ const labelValue = (field: keyof typeof fieldLabels, value: unknown) => {
 const normalizeForOutput = (row: ReportSubmissionRow) => ({
   submissionNo: row.submission_no,
   createdAt: row.created_at,
+  createdAtBeijing: row.created_at,
   updatedAt: row.updated_at,
+  updatedAtBeijing: row.updated_at,
   status: row.report_status,
   fullName: row.full_name,
   gender: row.gender,
@@ -162,7 +181,9 @@ const toCsv = (rows: ReturnType<typeof normalizeForOutput>[]) => {
   const fields = [
     'submissionNo',
     'createdAt',
+    'createdAtBeijing',
     'updatedAt',
+    'updatedAtBeijing',
     'status',
     'fullName',
     'gender',
