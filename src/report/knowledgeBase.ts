@@ -299,7 +299,7 @@ export const regions: Record<string, KnowledgeRegion[]> = {
   europe: [
     { flag: '🇬🇧', name: '英国', fee: '$45,000 - $90,000', wait: 'NHS等待较长；私立1-4周', tech: '临床规范和研究能力强', service: '私立医院英文服务成熟', visa: '医疗访问签证材料要求较高', follow: '回国后随访支持有限' },
     { flag: '🇩🇪', name: '德国', fee: '$40,000 - $85,000', wait: '2-5周', tech: '外科、康复和工程化医疗能力强', service: '英语服务视医院而定', visa: '申根医疗签证，材料准备较多', follow: '德语区复诊和资料翻译成本较高' },
-    { flag: '🇫🇷', name: '法国', fee: '$35,000 - $75,000', wait: '2-6周', tech: '肿瘤和专科治疗规范', service: '法语环境为主，英文支持有限', visa: '申根医疗签证', follow: '跨境随访便利性一般' },
+    { flag: '🇫🇷', name: '法国', fee: '$35,000 - $75,000', wait: '2-6周', tech: '专科诊疗规范化程度较高，需结合具体病种和医院资源评估', service: '法语环境为主，英文支持有限', visa: '申根医疗签证', follow: '跨境随访便利性一般' },
   ],
   southeast_asia: [
     { flag: '🇸🇬', name: '新加坡', fee: '$30,000 - $70,000', wait: '1-3周', tech: '亚洲高水平医疗，双语环境', service: '国际患者服务成熟', visa: '入境便利，医疗停留需确认期限', follow: '英文随访较便利但费用较高' },
@@ -312,7 +312,7 @@ export const regions: Record<string, KnowledgeRegion[]> = {
   ],
   japan_korea: [
     { flag: '🇯🇵', name: '日本', fee: '$35,000 - $85,000', wait: '2-6周', tech: '早筛、影像和精细化诊疗强', service: '日语为主，英文服务有限', visa: '医疗签证通常需日方担保', follow: '语言和文化沟通成本较高' },
-    { flag: '🇰🇷', name: '韩国', fee: '$25,000 - $65,000', wait: '1-4周', tech: '肿瘤、整形和体检服务成熟', service: '国际患者服务较成熟', visa: '医疗旅游签证相对成熟', follow: '亚洲范围随访较便利' },
+    { flag: '🇰🇷', name: '韩国', fee: '$25,000 - $65,000', wait: '1-4周', tech: '专科服务和医疗旅游流程较成熟，需按具体科室与项目评估', service: '国际患者服务较成熟', visa: '医疗旅游签证相对成熟', follow: '亚洲范围随访较便利' },
   ],
   australia_new_zealand: [
     { flag: '🇦🇺', name: '澳大利亚', fee: '$45,000 - $100,000', wait: '3-8周', tech: '规范化诊疗和康复体系成熟', service: '英文服务成熟', visa: '医疗访问签证材料较多', follow: '远程随访可行但成本较高' },
