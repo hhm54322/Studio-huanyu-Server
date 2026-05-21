@@ -100,6 +100,62 @@ const includesAny = (text: string, keywords: string[]) => getPositiveKeywordHits
 
 const unique = (items: string[]) => Array.from(new Set(items.filter(Boolean)))
 
+const parseUsdRange = (cost: string) => {
+  const matches = [...cost.replace(/,/g, '').matchAll(/\$?\s*(\d+(?:\.\d+)?)(?:\s*(k|K|千|万))?/g)]
+  const values = matches.map((match) => {
+    const unit = match[2]
+    const value = Number(match[1])
+    if (unit === 'k' || unit === 'K' || unit === '千') return value * 1000
+    if (unit === '万') return value * 10000
+    return value
+  }).filter((value) => Number.isFinite(value) && value > 0)
+
+  if (!values.length) return null
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values),
+  }
+}
+
+const formatUsdRange = ({ min, max }: { min: number; max: number }) => {
+  const formatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
+  if (min === max) return `$${formatter.format(min)}`
+  return `$${formatter.format(min)} - $${formatter.format(max)}`
+}
+
+const getBreakdownTotalCost = (breakdown: GeneratedReport['plan']['breakdown']) => {
+  const ranges = breakdown.map((item) => parseUsdRange(item.cost))
+  if (!ranges.length || ranges.some((range) => !range)) return null
+
+  let min = 0
+  let max = 0
+  for (const range of ranges) {
+    if (!range) return null
+    min += range.min
+    max += range.max
+  }
+
+  return formatUsdRange({ min, max })
+}
+
+const normalizeReportCosts = (report: GeneratedReport): GeneratedReport => {
+  const totalCost = getBreakdownTotalCost(report.plan.breakdown)
+  if (!totalCost) return report
+
+  return {
+    ...report,
+    countries: report.countries.map((country) => (
+      country.recommended || country.name.includes('中国')
+        ? { ...country, fee: totalCost }
+        : country
+    )),
+    plan: {
+      ...report.plan,
+      totalCost,
+    },
+  }
+}
+
 const chinaCountry = (disease: KnowledgeDisease, personalization?: CasePersonalization) => ({
   flag: '🇨🇳',
   name: '中国（推荐）',
@@ -614,7 +670,7 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
       ? `用户选择了“${personalization.requestedDepartment}”，但主诉中缺少典型相关信息；需结合${firstMaterial || '检查资料'}确认是否适合该科室。`
       : `${disease.label}方向匹配度约${score}/100，但需结合${firstMaterial || '补充资料'}确认`
 
-  return {
+  return normalizeReportCosts({
     id: submissionNo,
     date: dateLabel,
     subtitle: '来华就医可行性预审报告',
@@ -666,7 +722,7 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
     ],
     disclaimer: '本报告为基于用户提交信息和平台知识库生成的来华就医可行性预审，不构成诊断、处方或最终治疗建议。最终方案需以执业医生面诊、检查结果和医院正式意见为准。',
     generatedBy: 'rules',
-  }
+  })
 }
 
 const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport) => {
@@ -818,13 +874,13 @@ const enforceReportGuardrails = (report: GeneratedReport, context: ReportContext
     return ruleReport
   }
 
-  return {
+  return normalizeReportCosts({
     ...report,
     id: context.submissionNo,
     date: context.dateLabel,
     need: context.input.basicInfo.chiefComplaint,
     generatedBy: 'llm' as const,
-  }
+  })
 }
 
 export const generateReport = async (input: ReportSubmissionInput, submissionNo: string): Promise<GeneratedReport> => {
