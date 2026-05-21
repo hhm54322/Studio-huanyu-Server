@@ -156,6 +156,34 @@ const normalizeReportCosts = (report: GeneratedReport): GeneratedReport => {
   }
 }
 
+const harmonizeCountryFees = (report: GeneratedReport, diseaseKey: string): GeneratedReport => {
+  if (diseaseKey !== 'dental') return report
+
+  return {
+    ...report,
+    countries: report.countries.map((country) => {
+      if (country.recommended || country.name.includes('中国')) return country
+      const fee = comparableDentalRegionFees[country.name]
+      return fee ? { ...country, fee } : country
+    }),
+  }
+}
+
+const comparableDentalRegionFees: Record<string, string> = {
+  美国: '$5,000 - $24,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  加拿大: '$4,800 - $20,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  英国: '$4,500 - $18,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  德国: '$4,500 - $18,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  法国: '$4,000 - $16,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  新加坡: '$4,000 - $17,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  泰国: '$2,800 - $13,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  马来西亚: '$2,500 - $11,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  日本: '$4,500 - $18,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  韩国: '$3,500 - $16,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  澳大利亚: '$5,000 - $22,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+  新西兰: '$5,000 - $20,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+}
+
 const chinaCountry = (disease: KnowledgeDisease, personalization?: CasePersonalization) => ({
   flag: '🇨🇳',
   name: '中国（推荐）',
@@ -443,23 +471,9 @@ const personalizeRegionItem = (region: KnowledgeRegion, context: ReportContext):
   }
 
   if (diseaseKey === 'dental') {
-    const dentalFees: Record<string, string> = {
-      美国: '$2,000 - $15,000+（按牙位、植体和修复材料）',
-      加拿大: '$1,800 - $12,000+（按单颗/多颗和植骨需求）',
-      英国: '$1,500 - $10,000+（按私立牙科项目）',
-      德国: '$1,500 - $10,000+（按种植系统和修复材料）',
-      法国: '$1,200 - $8,000+（按项目和保险覆盖）',
-      新加坡: '$800 - $8,000+（按补牙、根管、种植颗数）',
-      泰国: '$500 - $6,000+（按医疗旅游牙科套餐）',
-      马来西亚: '$400 - $5,000+（按项目和材料）',
-      日本: '$1,000 - $9,000+（按自费牙科项目）',
-      韩国: '$700 - $7,000+（按种植和修复项目）',
-      澳大利亚: '$1,500 - $12,000+（按私立牙科项目）',
-      新西兰: '$1,500 - $10,000+（按牙科项目）',
-    }
     return {
       ...region,
-      fee: dentalFees[region.name] || '需按补牙、根管、拔牙、种植颗数和材料评估',
+      fee: comparableDentalRegionFees[region.name] || '需按补牙、根管、拔牙、种植颗数、材料、预约翻译和停留生活同口径评估',
       wait: region.wait.includes('周') ? region.wait : '通常1-3周，急性疼痛需先就近处理',
       tech: '重点比较CBCT评估、牙周/牙体牙髓处理、种植系统与牙冠材料透明度',
       follow: '种植和修复通常需要阶段性复诊，需提前确认远程随访和当地维护方式',
@@ -670,7 +684,7 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
       ? `用户选择了“${personalization.requestedDepartment}”，但主诉中缺少典型相关信息；需结合${firstMaterial || '检查资料'}确认是否适合该科室。`
       : `${disease.label}方向匹配度约${score}/100，但需结合${firstMaterial || '补充资料'}确认`
 
-  return normalizeReportCosts({
+  return harmonizeCountryFees(normalizeReportCosts({
     id: submissionNo,
     date: dateLabel,
     subtitle: '来华就医可行性预审报告',
@@ -722,7 +736,7 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
     ],
     disclaimer: '本报告为基于用户提交信息和平台知识库生成的来华就医可行性预审，不构成诊断、处方或最终治疗建议。最终方案需以执业医生面诊、检查结果和医院正式意见为准。',
     generatedBy: 'rules',
-  })
+  }), diseaseKey)
 }
 
 const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport) => {
@@ -874,13 +888,13 @@ const enforceReportGuardrails = (report: GeneratedReport, context: ReportContext
     return ruleReport
   }
 
-  return normalizeReportCosts({
+  return harmonizeCountryFees(normalizeReportCosts({
     ...report,
     id: context.submissionNo,
     date: context.dateLabel,
     need: context.input.basicInfo.chiefComplaint,
     generatedBy: 'llm' as const,
-  })
+  }), diseaseKey)
 }
 
 export const generateReport = async (input: ReportSubmissionInput, submissionNo: string): Promise<GeneratedReport> => {
