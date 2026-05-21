@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { ZodError } from 'zod'
-import { createReportSubmission } from '../db/reportSubmissions.js'
+import { createReportSubmission, getReportSubmission, updateReportSubmissionResult } from '../db/reportSubmissions.js'
+import { generateReport } from '../report/generator.js'
 import { reportSubmissionSchema } from '../validators/reportSubmission.js'
 
 export const registerReportSubmissionRoutes = async (app: FastifyInstance) => {
@@ -11,13 +12,17 @@ export const registerReportSubmissionRoutes = async (app: FastifyInstance) => {
         userAgent: request.headers['user-agent'],
         ip: request.ip,
       })
+      await updateReportSubmissionResult(created.submission_no, 'generating', null)
+      const report = await generateReport(input, created.submission_no)
+      await updateReportSubmissionResult(created.submission_no, 'generated', report)
 
       return reply.code(201).send({
         success: true,
         submissionId: created.id,
         submissionNo: created.submission_no,
-        status: created.report_status,
+        status: 'generated',
         createdAt: created.created_at,
+        report,
       })
     } catch (error) {
       if (error instanceof ZodError) {
@@ -39,5 +44,27 @@ export const registerReportSubmissionRoutes = async (app: FastifyInstance) => {
         message: 'Failed to save report submission',
       })
     }
+  })
+
+  app.get('/api/report-submissions/:submissionNo', async (request, reply) => {
+    const { submissionNo } = request.params as { submissionNo: string }
+    const row = await getReportSubmission(submissionNo)
+
+    if (!row) {
+      return reply.code(404).send({
+        success: false,
+        error: 'NOT_FOUND',
+        message: 'Report submission not found',
+      })
+    }
+
+    return reply.send({
+      success: true,
+      submissionId: row.id,
+      submissionNo: row.submission_no,
+      status: row.report_status,
+      createdAt: row.created_at,
+      report: row.report_result,
+    })
   })
 }

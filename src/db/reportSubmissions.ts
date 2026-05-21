@@ -83,6 +83,24 @@ export const createReportSubmission = async (
   return result.rows[0]
 }
 
+export const updateReportSubmissionResult = async (
+  submissionNo: string,
+  status: 'generating' | 'generated' | 'failed',
+  reportResult: unknown,
+) => {
+  const result = await pool.query<Pick<ReportSubmissionRow, 'id' | 'submission_no' | 'report_status' | 'report_result' | 'updated_at'>>(
+    `
+    UPDATE report_submissions
+    SET report_status = $2,
+        report_result = $3::jsonb
+    WHERE submission_no = $1
+    RETURNING id, submission_no, report_status, report_result, updated_at
+    `,
+    [submissionNo, status, JSON.stringify(reportResult)],
+  )
+  return result.rows[0] || null
+}
+
 export const listReportSubmissions = async (limit = 20) => {
   const result = await pool.query<ReportSubmissionRow>(
     `
