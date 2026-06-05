@@ -1,6 +1,19 @@
 import { config } from '../config.js'
 import type { ReportSubmissionInput } from '../validators/reportSubmission.js'
+import { getKnowledgeForFreeReport, type DocumentKnowledgeBlock } from './documentKnowledge.js'
+import {
+  dentalAdvantages,
+  dentalComparableRegionFees,
+  dentalImplantPriceItems,
+  dentalPartner,
+  dentalSimulationPlan,
+  dentalVeneerPriceItems,
+  isFullArchImplantNeed,
+  isVeneerNeed,
+} from './dentalKnowledge.js'
 import { defaultDisease, diseases, packages, regions, type KnowledgeDisease, type KnowledgeRegion } from './knowledgeBase.js'
+import type { ReportLayoutSection } from './layoutTypes.js'
+import { sanitizeReportText } from './textSanitizer.js'
 import { generatedReportSchema, type GeneratedReport } from './types.js'
 
 type DiseaseMatch = {
@@ -47,6 +60,7 @@ type ReportContext = {
   disease: KnowledgeDisease
   personalization: CasePersonalization
   selectedRegionItems: ReturnType<typeof getRegionItems>
+  documentKnowledge: DocumentKnowledgeBlock[]
 }
 
 type SymptomSignalGroup = {
@@ -100,20 +114,50 @@ const includesAny = (text: string, keywords: string[]) => getPositiveKeywordHits
 
 const unique = (items: string[]) => Array.from(new Set(items.filter(Boolean)))
 
-const parseUsdRange = (cost: string) => {
-  const matches = [...cost.replace(/,/g, '').matchAll(/\$?\s*(\d+(?:\.\d+)?)(?:\s*(k|K|千|万))?/g)]
-  const values = matches.map((match) => {
+const getParsedFileEvidence = (input: ReportSubmissionInput) => input.parsedFiles
+  .filter((file) => file.summary.trim() || file.text.trim())
+  .map((file) => `${file.originalName}：${file.summary || file.text.slice(0, 900)}`)
+
+const getSubmittedComplaint = (input: ReportSubmissionInput) => {
+  const complaint = input.basicInfo.chiefComplaint.trim()
+  const parsedEvidence = getParsedFileEvidence(input)
+  if (!parsedEvidence.length) return complaint
+  return [complaint, `上传资料摘要：${parsedEvidence.join('；')}`].filter(Boolean).join('\n')
+}
+
+const getComplaintForReport = (input: ReportSubmissionInput, fallbackLabel?: string) => {
+  const complaint = getSubmittedComplaint(input)
+  if (complaint) return complaint
+  return `用户暂未填写症状及病史，本次仅基于“${fallbackLabel || input.basicInfo.visitPurpose || '就医目的'}”进行初步可行性预审。`
+}
+
+const parseCostValues = (cost: string, pattern: RegExp, divisor = 1) => {
+  const matches = [...cost.replace(/,/g, '').matchAll(pattern)]
+  return matches.map((match) => {
     const unit = match[2]
     const value = Number(match[1])
-    if (unit === 'k' || unit === 'K' || unit === '千') return value * 1000
-    if (unit === '万') return value * 10000
-    return value
+    const normalized = unit === 'k' || unit === 'K' || unit === '千'
+      ? value * 1000
+      : unit === '万'
+        ? value * 10000
+        : value
+    return normalized / divisor
   }).filter((value) => Number.isFinite(value) && value > 0)
+}
 
-  if (!values.length) return null
+const parseUsdRange = (cost: string) => {
+  const usdValues = parseCostValues(cost, /\$\s*(\d+(?:\.\d+)?)(?:\s*(k|K|千|万))?/g)
+  const values = usdValues.length
+    ? usdValues
+    : parseCostValues(cost, /(?:¥|￥|人民币|RMB)\s*(\d+(?:\.\d+)?)(?:\s*(k|K|千|万))?/gi, 7.2)
+  const fallbackValues = values.length
+    ? values
+    : parseCostValues(cost, /\$?\s*(\d+(?:\.\d+)?)(?:\s*(k|K|千|万))?/g)
+
+  if (!fallbackValues.length) return null
   return {
-    min: Math.min(...values),
-    max: Math.max(...values),
+    min: Math.min(...fallbackValues),
+    max: Math.max(...fallbackValues),
   }
 }
 
@@ -163,26 +207,183 @@ const harmonizeCountryFees = (report: GeneratedReport, diseaseKey: string): Gene
     ...report,
     countries: report.countries.map((country) => {
       if (country.recommended || country.name.includes('中国')) return country
-      const fee = comparableDentalRegionFees[country.name]
+      const fee = dentalComparableRegionFees[country.name]
       return fee ? { ...country, fee } : country
     }),
   }
 }
 
-const comparableDentalRegionFees: Record<string, string> = {
-  美国: '$5,000 - $24,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  加拿大: '$4,800 - $20,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  英国: '$4,500 - $18,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  德国: '$4,500 - $18,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  法国: '$4,000 - $16,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  新加坡: '$4,000 - $17,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  泰国: '$2,800 - $13,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  马来西亚: '$2,500 - $11,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  日本: '$4,500 - $18,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  韩国: '$3,500 - $16,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  澳大利亚: '$5,000 - $22,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
-  新西兰: '$5,000 - $20,000+（同口径：治疗/材料 + 预约翻译 + 停留生活）',
+type DentalCostProfile = {
+  key: 'basic' | 'mixed' | 'advanced'
+  totalCost: string
+  duration: string
+  breakdown: GeneratedReport['plan']['breakdown']
+  regionFees: Record<string, string>
 }
+
+const toBreakdownItem = (item: { item: string; cost: string }) => ({ item: item.item, cost: item.cost })
+
+const dentalBrandAdvantage = {
+  label: '推荐机构',
+  value: `牙科方向仅推荐${dentalPartner.name}。${dentalPartner.brandIntro}`,
+}
+
+const dentalSimulationUpgradeText = `如患者进入专业版种植牙评估，可基于CBCT/口腔影像补充${dentalSimulationPlan.service}，覆盖诊断概览、3D设计概览、种植体位置/型号/角度/深度规划和手术概要。`
+
+const getDentalCostProfile = (context: ReportContext): DentalCostProfile => {
+  const text = [
+    context.personalization.complaint,
+    context.input.basicInfo.visitPurpose,
+    context.input.basicInfo.chiefComplaint,
+  ].join(' ')
+  const hasFullArchNeed = isFullArchImplantNeed(text)
+  const hasVeneerNeed = isVeneerNeed(text)
+  const hasImplantNeed = hasFullArchNeed || includesAny(text, [
+    '种植', 'implant', '缺牙', '拔牙后', '全口', '半口', '植骨', '上颌窦',
+  ])
+  const hasAdvancedNeed = hasImplantNeed || hasVeneerNeed || includesAny(text, [
+    '正畸', '矫正', '牙冠', '修复',
+  ])
+  const hasBasicNeed = includesAny(text, [
+    '牙疼', '牙痛', '蛀牙', '龋', '龋齿', '补牙', '根管', '牙髓', '牙神经', 'cavity', 'root canal', 'dental pain',
+  ])
+
+  if (hasImplantNeed && hasBasicNeed) {
+    return {
+      key: 'mixed',
+      totalCost: '基础止痛/保牙处理需鼎植面诊报价；若经CBCT确认需资料中的半口即刻负重，参考¥98,000-¥298,000（约$13,600-$41,400）',
+      duration: '短期先完成CBCT、疼痛来源判断、补牙/根管/拔牙等急性处理；如最终需要种植修复，通常需一期手术、3-6个月骨结合、二期修复和后续复查。',
+      breakdown: [
+        { item: '口腔全景片/CBCT、牙周与咬合评估', cost: '需鼎植面诊报价' },
+        { item: '止痛、补牙、根管或拔牙初步处理', cost: '按患牙数量和治疗方式面诊确认' },
+        ...dentalImplantPriceItems.map(toBreakdownItem),
+        { item: '翻译、预约与就医协调', cost: '$300-$1,000' },
+        { item: '短期住宿与生活', cost: '$500-$2,000' },
+      ],
+      regionFees: {
+        美国: '$2,500 - $18,000+',
+        加拿大: '$2,300 - $16,000+',
+        英国: '$2,000 - $15,000+',
+        德国: '$2,000 - $15,000+',
+        法国: '$1,800 - $14,000+',
+        新加坡: '$1,800 - $14,000+',
+        泰国: '$1,000 - $8,500+',
+        马来西亚: '$900 - $7,500+',
+        日本: '$2,000 - $15,000+',
+        韩国: '$1,500 - $12,000+',
+        澳大利亚: '$2,500 - $17,000+',
+        新西兰: '$2,300 - $16,000+',
+      },
+    }
+  }
+
+  if (hasImplantNeed) {
+    return {
+      key: 'advanced',
+      totalCost: hasFullArchNeed
+        ? '半口/复杂种植参考¥98,000-¥298,000（约$13,600-$41,400）'
+        : '种植方案需先由鼎植结合CBCT报价；资料中半口即刻负重参考¥98,000起（约$13,600起）',
+      duration: '在华可先完成口腔影像、牙周/咬合评估和鼎植种植方案确认；完整种植修复通常需一期手术、3-6个月骨结合、二期修复和每3-6个月维护复查。',
+      breakdown: [
+        { item: '口腔全景片/CBCT、牙周与咬合评估', cost: '需鼎植面诊报价' },
+        ...dentalImplantPriceItems.map(toBreakdownItem),
+        { item: '翻译、预约与就医协调', cost: '$300-$1,200' },
+        { item: '住宿与生活', cost: '$800-$2,600' },
+      ],
+      regionFees: dentalComparableRegionFees,
+    }
+  }
+
+  if (hasVeneerNeed || hasAdvancedNeed) {
+    return {
+      key: 'advanced',
+      totalCost: '高端牙贴面参考¥2,680-¥85,000（约$400-$11,800），按单颗/8颗/16颗、材料品牌和美学设计确认',
+      duration: '在华可先完成口腔检查、牙周/咬合评估和贴面美学设计；具体取模、制作和佩戴周期需按颗数、材料和医生方案确认。',
+      breakdown: [
+        { item: '口腔检查、牙周与咬合评估', cost: '需鼎植面诊报价' },
+        ...dentalVeneerPriceItems.map(toBreakdownItem),
+        { item: '翻译、预约与就医协调', cost: '$300-$1,200' },
+        { item: '住宿与生活', cost: '$800-$2,600' },
+      ],
+      regionFees: dentalComparableRegionFees,
+    }
+  }
+
+  return {
+    key: 'basic',
+    totalCost: '基础牙科处理需鼎植面诊报价；建议先预留¥2,000-¥15,000（约$300-$2,100）用于检查、止痛、补牙/根管等首阶段处理',
+    duration: '多数牙痛、龋齿、补牙或根管初步处理可在5-10天内完成评估和首阶段治疗；是否需要种植需检查后再判断。',
+    breakdown: [
+      { item: '口腔检查、根尖片/全景片或基础影像', cost: '需鼎植面诊报价' },
+      { item: '补牙、根管或牙周初步处理', cost: '按患牙数量、材料和治疗方式确认' },
+      { item: '药物、复诊和材料预留', cost: '按医生处置确认' },
+      { item: '翻译、预约与就医协调', cost: '$300-$900' },
+      { item: '短期住宿与生活', cost: '$200-$1,000' },
+    ],
+    regionFees: {
+      美国: '$800 - $5,000+',
+      加拿大: '$700 - $4,500+',
+      英国: '$700 - $4,500+',
+      德国: '$700 - $4,500+',
+      法国: '$600 - $4,000+',
+      新加坡: '$700 - $4,500+',
+      泰国: '$300 - $2,000+',
+      马来西亚: '$250 - $1,800+',
+      日本: '$700 - $4,500+',
+      韩国: '$600 - $4,000+',
+      澳大利亚: '$800 - $5,000+',
+      新西兰: '$800 - $5,000+',
+    },
+  }
+}
+
+const applyDentalCostGuardrails = (report: GeneratedReport, context: ReportContext): GeneratedReport => {
+  if (context.diseaseKey !== 'dental' || context.personalization.mismatch) return report
+
+  const profile = getDentalCostProfile(context)
+  const existingAdvantages = report.advantages
+    .filter((item) => !reportContainsAny({ ...report, advantages: [item] }, ['肿瘤', '化疗', '放疗', '靶向', '免疫治疗']))
+    .filter((item) => !['推荐机构', ...dentalAdvantages.map((advantage) => advantage.label)].includes(item.label))
+    .slice(0, 1)
+  const dentalHighlights = [
+    `牙科方向仅推荐${dentalPartner.name}，最终接诊和方案以鼎植预审/面诊意见为准。`,
+    dentalPartner.preparation,
+    ...(profile.key !== 'basic' ? [dentalSimulationUpgradeText] : []),
+  ]
+
+  return {
+    ...report,
+    countries: report.countries.map((country) => {
+      if (country.recommended || country.name.includes('中国')) {
+        return { ...country, fee: profile.totalCost }
+      }
+      const fee = profile.regionFees[country.name]
+      return fee ? { ...country, fee } : country
+    }),
+    plan: {
+      ...report.plan,
+      duration: profile.duration,
+      totalCost: profile.totalCost,
+      breakdown: profile.breakdown,
+    },
+    hospitals: [
+      { city: dentalPartner.city, name: dentalPartner.name, reason: dentalPartner.recommendationReason },
+    ],
+    advantages: [
+      dentalBrandAdvantage,
+      ...dentalAdvantages.map((item) => ({ label: item.label, value: item.value })),
+      ...existingAdvantages,
+    ].slice(0, 4),
+    highlights: unique([
+      ...dentalHighlights,
+      ...report.highlights.filter((item) => !/肿瘤|化疗|放疗|靶向|免疫治疗/.test(item)).slice(0, 3),
+    ]).slice(0, 4),
+  }
+}
+
+const finalizeReportCosts = (report: GeneratedReport, context: ReportContext): GeneratedReport => (
+  applyDentalCostGuardrails(harmonizeCountryFees(normalizeReportCosts(report), context.diseaseKey), context)
+)
 
 const chinaCountry = (disease: KnowledgeDisease, personalization?: CasePersonalization) => ({
   flag: '🇨🇳',
@@ -223,7 +424,7 @@ const symptomSignalGroups: Record<string, SymptomSignalGroup> = {
   nasopharyngeal_cancer: {
     label: '鼻咽/头颈专科',
     diseaseKey: 'nasopharyngeal_cancer',
-    keywords: ['鼻咽', '鼻咽癌', '涕血', '回吸血涕', '颈部淋巴', 'ebv', '头颈肿瘤', '鼻咽镜', '鼻塞', '耳鸣', '听力下降', '流鼻血', '鼻出血', '放疗'],
+    keywords: ['鼻咽', '鼻咽癌', '涕血', '回吸血涕', '颈部淋巴', 'ebv', '头颈肿瘤', '鼻咽镜', '鼻塞', '耳鸣', '听力下降', '流鼻血', '鼻出血'],
     inferKeywords: ['鼻咽癌', '鼻咽肿瘤', '鼻咽镜', 'ebv', '头颈肿瘤', '颈部淋巴'],
   },
   liver_cancer: {
@@ -240,7 +441,7 @@ const symptomSignalGroups: Record<string, SymptomSignalGroup> = {
   neurosurgery: {
     label: '神经外科/脑部问题',
     diseaseKey: 'neurosurgery',
-    keywords: ['脑', '颅内', '头痛', '头晕', '癫痫', '抽搐', '偏瘫', '胶质', '垂体', '动脉瘤', '脑瘤', '脑肿瘤', '神经外科'],
+    keywords: ['脑', '颅内', '脊髓', '头痛', '头晕', '癫痫', '抽搐', '偏瘫', '胶质', '胶质瘤', '神经胶质瘤', '星形细胞瘤', '垂体', '动脉瘤', '脑瘤', '脑肿瘤', '脊髓肿瘤', '下肢麻木', '肢体麻木', '行走困难', '神经功能', '神经外科'],
   },
   spine_surgery: {
     label: '脊柱外科/颈腰椎问题',
@@ -392,7 +593,7 @@ const getDiseaseMatch = (input: ReportSubmissionInput): DiseaseMatch => {
   const direct = diseases[input.basicInfo.visitPurpose]
   const requestedKey = direct ? input.basicInfo.visitPurpose : 'other'
   const requestedDisease = direct || defaultDisease
-  const complaintText = input.basicInfo.chiefComplaint
+  const complaintText = getSubmittedComplaint(input)
   const matchedSignals = getMatchedSignals(complaintText)
   const inferredDiseaseKey = getInferableDiseaseKey(complaintText, matchedSignals)
 
@@ -473,7 +674,7 @@ const personalizeRegionItem = (region: KnowledgeRegion, context: ReportContext):
   if (diseaseKey === 'dental') {
     return {
       ...region,
-      fee: comparableDentalRegionFees[region.name] || '需按补牙、根管、拔牙、种植颗数、材料、预约翻译和停留生活同口径评估',
+      fee: dentalComparableRegionFees[region.name] || '需按补牙、根管、拔牙、种植颗数、材料、预约翻译和停留生活评估',
       wait: region.wait.includes('周') ? region.wait : '通常1-3周，急性疼痛需先就近处理',
       tech: '重点比较CBCT评估、牙周/牙体牙髓处理、种植系统与牙冠材料透明度',
       follow: '种植和修复通常需要阶段性复诊，需提前确认远程随访和当地维护方式',
@@ -560,7 +761,7 @@ const getSpecialtyRules = (diseaseKey: string) => {
 }
 
 const buildPersonalization = (input: ReportSubmissionInput, match: DiseaseMatch): CasePersonalization => {
-  const complaint = input.basicInfo.chiefComplaint.trim()
+  const complaint = getComplaintForReport(input, match.requestedDisease.label)
   const text = `${match.key} ${match.disease.label} ${complaint}`.toLowerCase()
   const urgentSignals = [
     ['发热', '肿胀', '张口受限', '吞咽困难', '牙疼明显', '剧痛', '脓肿'],
@@ -657,10 +858,198 @@ const estimateScore = (disease: typeof defaultDisease, input: ReportSubmissionIn
 
   let score = disease.score
   if (input.selectedRegions.includes('north_america') || input.selectedRegions.includes('europe')) score += 2
-  if (input.basicInfo.chiefComplaint.length > 80) score += 2
+  if (getSubmittedComplaint(input).length > 80) score += 2
   if (input.basicInfo.visitPurpose === 'other') score -= 8
   return Math.max(60, Math.min(92, score))
 }
+
+const buildFreeLayoutSections = (report: GeneratedReport, context: ReportContext): ReportLayoutSection[] => {
+  const { personalization } = context
+  const countryRows = report.countries.map((country) => ({
+    cells: [
+      `${country.flag} ${country.name}`,
+      country.fee,
+      country.wait,
+      country.tech,
+      country.service,
+      country.follow,
+    ],
+    highlight: Boolean(country.recommended),
+  }))
+  const costRows = report.plan.breakdown.map((item) => ({ cells: [item.item, item.cost] }))
+  const nextStepItems = [
+    `补充资料：${personalization.requiredMaterials.slice(0, 4).join('、') || '近期检查和既往治疗资料'}`,
+    `核心医学判断：${personalization.decisionPoints[0] || '明确主责专科和治疗优先级'}`,
+    '确认预算、保险预授权要求和希望来华城市。',
+    '进入专业版后上传原始资料，由系统生成更完整的专家预审和行程方案。',
+  ]
+  const proUpgradeItems = [
+    ...report.highlights.slice(0, 5),
+    ...personalization.requiredMaterials.slice(0, 3).map((item) => `补充${item}后，可进一步完善费用区间、治疗先后顺序和出行安排。`),
+    `专业版会围绕“${personalization.decisionPoints[0] || '下一步关键诊疗问题'}”进行医生复核前的结构化预审。`,
+  ]
+
+  return [
+    {
+      key: 'cost',
+      label: '全球该疾病费用对比',
+      labelEn: 'Global Cost Comparison',
+      icon: 'Globe',
+      summary: '费用为预估区间，需结合病情、检查结果、医院报价和治疗强度复核。',
+      blocks: [
+        {
+          type: 'summary',
+          title: '费用节省与预算定位',
+          metrics: [
+            { label: '中国预估总费用', value: report.plan.totalCost, detail: report.plan.duration, tone: 'highlight' },
+            { label: '可行性评分', value: `${report.score}/100`, detail: report.disease },
+            { label: '主要诉求', value: report.need.slice(0, 48), detail: report.need.length > 48 ? report.need.slice(48, 120) : undefined },
+          ],
+        },
+        {
+          type: 'table',
+          title: '国家/地区费用、等待和服务对比',
+          table: {
+            columns: ['国家/地区', '费用', '等待', '技术重点', '服务', '随访'],
+            rows: countryRows,
+          },
+        },
+      ],
+    },
+    {
+      key: 'technology',
+      label: '全球治疗价值对比',
+      labelEn: 'Global Treatment Value Comparison',
+      icon: 'Sparkles',
+      summary: '以下对比仅作预审参考，最终以医生面诊、资料复核和医院正式方案为准。',
+      blocks: [
+        {
+          type: 'table',
+          title: '全维度价值对比',
+          table: {
+            columns: ['方案', '技术/能力', '国际患者服务', '后续管理'],
+            rows: report.countries.map((country) => ({
+              cells: [`${country.flag} ${country.name}`, country.tech, country.service, country.follow],
+              highlight: Boolean(country.recommended),
+            })),
+          },
+        },
+        {
+          type: 'list',
+          title: '本例需要重点核对的医疗能力',
+          items: personalization.decisionPoints,
+        },
+      ],
+    },
+    {
+      key: 'outcome',
+      label: '我们为什么推荐中国',
+      labelEn: 'Why China Is Worth Considering',
+      icon: 'TrendingUp',
+      summary: '本节仅做风险和决策参考，不承诺治愈率或具体治疗结果。',
+      blocks: [
+        {
+          type: 'cards',
+          title: '中国方案的核心优势',
+          cards: report.advantages.map((item) => ({
+            title: item.label,
+            description: item.value,
+            tone: item.label.includes('需确认') ? 'warning' : 'default',
+          })),
+        },
+        {
+          type: 'notice',
+          title: '适用前提与医学审慎提示',
+          description: personalization.urgencyNote,
+          items: personalization.specialtyRules.slice(0, 4),
+          tone: personalization.urgentRisk ? 'danger' : 'warning',
+        },
+      ],
+    },
+    {
+      key: 'feasibility',
+      label: '风险里程碑：同样治疗，价格差异大',
+      labelEn: 'Risk Milestones & Cost Difference',
+      icon: 'FileText',
+      blocks: [
+        {
+          type: 'summary',
+          title: '预算、风险和决策窗口',
+          metrics: [
+            { label: '中国预估总费用', value: report.plan.totalCost, detail: report.plan.duration, tone: 'highlight' },
+            { label: '可行性评分', value: `${report.score}/100`, detail: report.score >= 80 ? '具备较高预审价值' : '需先补充资料或重新分诊', tone: report.score >= 80 ? 'highlight' : 'warning' },
+            { label: '匹配方向', value: report.disease, detail: report.treatment.slice(0, 120) },
+          ],
+        },
+        {
+          type: 'table',
+          title: '费用明细预估',
+          table: {
+            columns: ['项目', '预估区间'],
+            rows: costRows,
+          },
+        },
+        {
+          type: 'table',
+          title: '主要风险与应对方式',
+          table: {
+            columns: ['顾虑', '解决方案'],
+            rows: report.concerns.map((item) => ({ cells: [item.concern, item.solution] })),
+          },
+        },
+      ],
+    },
+    {
+      key: 'next',
+      label: '未来就诊与需要资料',
+      labelEn: 'Preparation Materials & Next Steps',
+      icon: 'Footprints',
+      blocks: [
+        {
+          type: 'timeline',
+          title: '就诊前准备节奏',
+          timeline: nextStepItems.map((item, index) => ({
+            time: `Step ${index + 1}`,
+            title: item,
+          })),
+        },
+        {
+          type: 'list',
+          title: '建议优先补充的资料',
+          items: personalization.requiredMaterials,
+        },
+      ],
+    },
+    {
+      key: 'upgrade',
+      label: '获取包含个人病情的专业评估',
+      labelEn: 'Upgrade for a Personalized Professional Report',
+      icon: 'Sparkles',
+      blocks: [
+        {
+          type: 'cards',
+          title: '专业评估服务包',
+          cards: report.packages.map((pkg) => ({
+            title: pkg.name,
+            value: pkg.price,
+            description: pkg.features.join('；'),
+            tone: pkg.highlight ? 'highlight' : 'default',
+          })),
+        },
+        {
+          type: 'list',
+          title: '升级后重点补强',
+          items: proUpgradeItems,
+        },
+      ],
+    },
+  ]
+}
+
+const withFreeLayoutSections = (report: GeneratedReport, context: ReportContext): GeneratedReport => ({
+  ...report,
+  layoutSections: buildFreeLayoutSections(report, context),
+})
 
 const buildRuleReport = (context: ReportContext): GeneratedReport => {
   const { disease, diseaseKey, input, personalization, selectedRegionItems, submissionNo, dateLabel } = context
@@ -669,6 +1058,7 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
   const selectedNames = selectedRegionItems.map((item) => item.name).join('、') || '所选目的地'
   const firstDecision = personalization.decisionPoints[0] || '明确下一步诊疗方向'
   const firstMaterial = personalization.requiredMaterials.slice(0, 3).join('、')
+  const parsedEvidence = getParsedFileEvidence(input)
   const direction = [
     ...personalization.planPriorities,
     disease.direction,
@@ -684,7 +1074,7 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
       ? `用户选择了“${personalization.requestedDepartment}”，但主诉中缺少典型相关信息；需结合${firstMaterial || '检查资料'}确认是否适合该科室。`
       : `${disease.label}方向匹配度约${score}/100，但需结合${firstMaterial || '补充资料'}确认`
 
-  return harmonizeCountryFees(normalizeReportCosts({
+  return finalizeReportCosts({
     id: submissionNo,
     date: dateLabel,
     subtitle: '来华就医可行性预审报告',
@@ -692,7 +1082,7 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
     treatment: personalization.mismatch
       ? `${personalization.mismatchReason} 本次报告先按综合分诊处理，重点识别可能方向、危险信号和下一步资料清单。`
       : `${disease.treatment}（围绕用户主诉先判断：${firstDecision}）`,
-    need: input.basicInfo.chiefComplaint,
+    need: getComplaintForReport(input, disease.label),
     countries,
     score,
     advantages: [
@@ -714,9 +1104,13 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
         ? [{ concern: '存在其他科室信号', solution: `症状中还出现${personalization.secondaryDirections.join('、')}相关线索，需确认是否合并问题或是否需要先转对应专科。` }]
         : []),
       { concern: '当前信息仍不足以直接定方案', solution: `建议补充${firstMaterial || '近期检查资料和既往治疗记录'}，由对应专科判断治疗优先级` },
+      ...(parsedEvidence.length
+        ? [{ concern: '上传资料已用于预审', solution: `已参考${parsedEvidence.slice(0, 2).join('；').slice(0, 180)}，但原始报告仍需医生复核。` }]
+        : []),
       { concern: '急性风险排除', solution: personalization.urgencyNote },
       { concern: '语言沟通', solution: '建议配置医学翻译和就医管家，减少跨科室沟通误差' },
       { concern: '治疗连续性', solution: `出发前需围绕“${firstDecision}”确认分阶段治疗、回国维护和远程复诊方式` },
+      { concern: '资料完整度影响判断', solution: `建议补充${firstMaterial || '关键检查资料'}，由医生复核后再确认费用、医院和治疗顺序。` },
     ],
     hospitals: disease.hospitals,
     plan: {
@@ -729,6 +1123,7 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
     },
     packages,
     highlights: [
+      ...(parsedEvidence.length ? [`已读取上传资料摘要：${parsedEvidence[0].slice(0, 120)}`] : []),
       ...disease.advantages,
       `围绕“${firstDecision}”做专家人工复核`,
       `优先核对${firstMaterial || '关键检查资料'}后再出行`,
@@ -736,11 +1131,99 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
     ],
     disclaimer: '本报告为基于用户提交信息和平台知识库生成的来华就医可行性预审，不构成诊断、处方或最终治疗建议。最终方案需以执业医生面诊、检查结果和医院正式意见为准。',
     generatedBy: 'rules',
-  }), diseaseKey)
+  }, context)
 }
 
+const truncateForPrompt = (text: string, maxLength: number) => {
+  if (text.length <= maxLength) return text
+  return `${text.slice(0, maxLength)}...`
+}
+
+const compactPatientInputForPrompt = (input: ReportSubmissionInput) => ({
+  locale: input.locale,
+  basicInfo: {
+    ...input.basicInfo,
+    chiefComplaint: truncateForPrompt(input.basicInfo.chiefComplaint, 700),
+  },
+  selectedRegions: input.selectedRegions,
+  uploadedFiles: input.uploadedFiles.map((file) => ({
+    fieldName: file.fieldName,
+    originalName: file.originalName,
+    mimeType: file.mimeType,
+    size: file.size,
+  })),
+  parsedFiles: input.parsedFiles.map((file) => ({
+    originalName: file.originalName,
+    status: file.status,
+    summary: truncateForPrompt(file.summary, 500),
+  })),
+})
+
+const compactDocumentKnowledgeForPrompt = (blocks: DocumentKnowledgeBlock[]) => blocks
+  .slice(0, 4)
+  .map((block) => ({
+    category: block.category,
+    diseaseKeys: block.diseaseKeys.slice(0, 6),
+    guidance: truncateForPrompt(block.guidance, 420),
+    evidenceSummary: truncateForPrompt(block.evidenceSummary, 260),
+    keywords: block.keywords.slice(0, 10),
+  }))
+
+const compactDiseaseForPrompt = (disease: KnowledgeDisease) => ({
+  label: disease.label,
+  treatment: disease.treatment,
+  direction: disease.direction,
+  duration: disease.duration,
+  chinaFee: disease.chinaFee,
+  score: disease.score,
+  advantages: disease.advantages.slice(0, 5),
+  hospitals: disease.hospitals.slice(0, 4),
+  breakdown: disease.breakdown.slice(0, 8),
+  keywords: disease.keywords.slice(0, 10),
+})
+
+const compactRegionForPrompt = (region: KnowledgeRegion) => ({
+  flag: region.flag,
+  name: region.name,
+  fee: region.fee,
+  wait: region.wait,
+  tech: truncateForPrompt(region.tech, 120),
+  service: truncateForPrompt(region.service, 120),
+  visa: region.visa,
+  follow: truncateForPrompt(region.follow, 120),
+})
+
+const compactRuleReportForPrompt = (report: GeneratedReport) => ({
+  id: report.id,
+  date: report.date,
+  subtitle: report.subtitle,
+  disease: report.disease,
+  treatment: report.treatment,
+  need: truncateForPrompt(report.need, 700),
+  countries: report.countries.map((country) => ({
+    flag: country.flag,
+    name: country.name,
+    fee: country.fee,
+    wait: country.wait,
+    tech: truncateForPrompt(country.tech, 120),
+    service: truncateForPrompt(country.service, 120),
+    visa: country.visa,
+    follow: truncateForPrompt(country.follow, 120),
+    recommended: country.recommended,
+  })),
+  score: report.score,
+  advantages: report.advantages,
+  concerns: report.concerns,
+  hospitals: report.hospitals,
+  plan: report.plan,
+  packages: report.packages,
+  highlights: report.highlights,
+  disclaimer: report.disclaimer,
+  generatedBy: report.generatedBy,
+})
+
 const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport) => {
-  const { input, disease, diseaseKey, personalization, selectedRegionItems, submissionNo, dateLabel } = context
+  const { input, disease, diseaseKey, personalization, selectedRegionItems, submissionNo, dateLabel, documentKnowledge } = context
   return [
     {
       role: 'system',
@@ -767,13 +1250,22 @@ const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport) => {
           '国家对比必须结合当前科室和用户诉求。如果知识库中的地区费用明显偏向大病种，不适用于当前科室，应改写成“按项目评估”的保守表达。',
           '费用明细要围绕可能发生的真实项目拆分；不确定时给分层区间，避免单一、看似精确但无依据的数字。',
           '医院推荐理由必须说明为什么适合当前用户主诉，而不是只说医院强。',
+          diseaseKey === 'dental' ? `牙科方向只能推荐${dentalPartner.name}，不得推荐北大口腔、上海九院、中大口腔或其他口腔医院；费用优先使用鼎植资料中的半口即刻负重和贴面价格，未提供明细的基础牙科项目必须说明需面诊报价。` : '',
+          diseaseKey === 'dental' ? `种植牙模拟方案只作为专业版/后续升级服务表达，不要把免费预审写得过度臃肿。` : '',
           '不要把“疾病/科室名称”当作已确诊诊断；需要医生结合资料确认。',
           'disease 字段只写简短科室/方向名称，不超过16个汉字；未确诊、需确认等说明放到 treatment 或 concerns。',
           '当 personalization.mismatch 为 true 时，不得按 requestedDepartment 生成专科治疗方案，必须优先输出“科室选择需确认/综合分诊”的报告。',
           '当 personalization.weakMatch 为 true 且 mismatch 为 false 时，可以保留 requestedDepartment 方向，但必须在 concerns 中提示关联信息不足和补资料要求。',
-        ],
+        ].filter(Boolean),
         personalization,
         specialtyRules: personalization.specialtyRules,
+        documentKnowledge: compactDocumentKnowledgeForPrompt(documentKnowledge),
+        documentKnowledgeUsageRules: [
+          '这些知识块来自用户提供资料整理后的专业要点，只能作为生成依据和质量约束。',
+          '不得逐句复制 evidenceSummary；必须结合 patientInput 和 personalization 重写。',
+          '如果知识块与当前病种或主诉不匹配，应忽略。',
+          '涉及费用、预后、保险、医院能力时，用“参考、预估、需确认”措辞，不得承诺。',
+        ],
         qualityChecklist: [
           '是否明确回应了用户 chiefComplaint 中至少两个具体信息点？',
           '是否说明了下一步最关键的医学判断？',
@@ -800,15 +1292,17 @@ const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport) => {
           generatedBy: '"llm"',
         },
         fixedFields: { id: submissionNo, date: dateLabel, generatedBy: 'llm' },
-        patientInput: input,
+        patientInput: compactPatientInputForPrompt(input),
+        uploadedFileEvidence: getParsedFileEvidence(input).slice(0, 5).map((item) => truncateForPrompt(item, 900)),
         matchedKnowledge: {
           diseaseKey,
-          disease,
+          disease: compactDiseaseForPrompt(disease),
           chinaCountry: chinaCountry(disease, personalization),
-          selectedRegions: selectedRegionItems.map((item) => personalizeRegionItem(item, context)),
+          selectedRegions: selectedRegionItems.map((item) => compactRegionForPrompt(personalizeRegionItem(item, context))),
           packages,
+          dentalPartner: diseaseKey === 'dental' ? dentalPartner : undefined,
         },
-        baselineRuleReport: ruleReport,
+        baselineRuleReport: compactRuleReportForPrompt(ruleReport),
       }),
     },
   ]
@@ -821,36 +1315,91 @@ const extractJson = (content: string) => {
   return match ? match[0] : trimmed
 }
 
+const readChatCompletionContent = async (response: Response) => {
+  const contentType = response.headers.get('content-type') || ''
+
+  if (contentType.includes('application/json')) {
+    const json = await response.json() as {
+      choices?: Array<{ message?: { content?: string } }>
+    }
+    const content = json.choices?.[0]?.message?.content
+    if (!content) throw new Error('LLM response did not include content')
+    return content
+  }
+
+  if (!response.body) throw new Error('LLM response did not include a readable body')
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let content = ''
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done })
+    const lines = buffer.split(/\r?\n/)
+    buffer = lines.pop() || ''
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim()
+      if (!line || !line.startsWith('data:')) continue
+      const data = line.slice(5).trim()
+      if (!data || data === '[DONE]') continue
+
+      try {
+        const chunk = JSON.parse(data) as {
+          choices?: Array<{
+            delta?: { content?: string }
+            message?: { content?: string }
+          }>
+        }
+        content += chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content || ''
+      } catch {
+        // Ignore compatible gateway keepalive frames.
+      }
+    }
+
+    if (done) break
+  }
+
+  if (!content.trim()) throw new Error('LLM stream did not include content')
+  return content
+}
+
 const callLlm = async (context: ReportContext, ruleReport: GeneratedReport) => {
   if (!config.openaiApiKey) return null
 
-  const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.openaiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: config.openaiModel,
-      messages: buildPrompt(context, ruleReport),
-      temperature: 0.35,
-      response_format: { type: 'json_object' },
-    }),
-    signal: AbortSignal.timeout(config.openaiTimeoutMs),
+  const body = JSON.stringify({
+    model: config.openaiModel,
+    messages: buildPrompt(context, ruleReport),
+    temperature: 0.35,
+    reasoning_effort: 'low',
+    response_format: { type: 'json_object' },
+    stream: true,
   })
 
-  if (!response.ok) {
-    const body = await response.text()
-    throw new Error(`LLM request failed: ${response.status} ${body.slice(0, 500)}`)
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body,
+      signal: AbortSignal.timeout(config.openaiTimeoutMs),
+    })
+
+    if (!response.ok) {
+      const responseBody = await response.text()
+      if (attempt < 2 && [408, 429, 500, 502, 503, 504].includes(response.status)) continue
+      throw new Error(`LLM request failed: ${response.status} ${responseBody.slice(0, 500)}`)
+    }
+
+    const content = await readChatCompletionContent(response)
+    return generatedReportSchema.parse(JSON.parse(extractJson(content)))
   }
 
-  const json = await response.json() as {
-    choices?: Array<{ message?: { content?: string } }>
-  }
-  const content = json.choices?.[0]?.message?.content
-  if (!content) throw new Error('LLM response did not include content')
-
-  return generatedReportSchema.parse(JSON.parse(extractJson(content)))
+  return null
 }
 
 const reportContainsAny = (report: GeneratedReport, terms: string[]) => {
@@ -888,13 +1437,13 @@ const enforceReportGuardrails = (report: GeneratedReport, context: ReportContext
     return ruleReport
   }
 
-  return harmonizeCountryFees(normalizeReportCosts({
+  return finalizeReportCosts({
     ...report,
     id: context.submissionNo,
     date: context.dateLabel,
-    need: context.input.basicInfo.chiefComplaint,
+    need: getComplaintForReport(context.input, context.disease.label),
     generatedBy: 'llm' as const,
-  }), diseaseKey)
+  }, context)
 }
 
 export const generateReport = async (input: ReportSubmissionInput, submissionNo: string): Promise<GeneratedReport> => {
@@ -907,15 +1456,16 @@ export const generateReport = async (input: ReportSubmissionInput, submissionNo:
     disease: match.disease,
     personalization: buildPersonalization(input, match),
     selectedRegionItems: getRegionItems(input.selectedRegions),
+    documentKnowledge: getKnowledgeForFreeReport(input, match.key),
   }
   const ruleReport = buildRuleReport(context)
 
   try {
     const llmReport = await callLlm(context, ruleReport)
-    return llmReport ? enforceReportGuardrails(llmReport, context, ruleReport) : ruleReport
+    return sanitizeReportText(withFreeLayoutSections(llmReport ? enforceReportGuardrails(llmReport, context, ruleReport) : ruleReport, context))
   } catch (error) {
     const message = error instanceof Error ? error.message.replace(/sk-[A-Za-z0-9_*.-]+/g, 'sk-***') : String(error)
     console.warn(`Report LLM generation failed, using rule fallback: ${message.slice(0, 240)}`)
-    return ruleReport
+    return sanitizeReportText(withFreeLayoutSections(ruleReport, context))
   }
 }

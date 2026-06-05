@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { reportLayoutSectionSchema } from './layoutTypes.js'
 
 export const reportCountrySchema = z.object({
   flag: z.string(),
@@ -51,6 +52,7 @@ export const generatedReportSchema = z.object({
     features: z.array(z.string()).min(1),
   })).min(1),
   highlights: z.array(z.string()).min(1),
+  layoutSections: z.array(reportLayoutSectionSchema).optional(),
   disclaimer: z.string(),
   generatedBy: z.enum(['llm', 'rules']),
 })

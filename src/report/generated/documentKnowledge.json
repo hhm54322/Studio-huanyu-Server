@@ -1,0 +1,5579 @@
+{
+  "generatedAt": "2026-06-03T07:03:42.710Z",
+  "sourceRoot": "/Users/hhm/Desktop/1024Clients/huanyu",
+  "sourceCount": 36,
+  "blockCount": 216,
+  "note": "Knowledge blocks are extracted as guidance and summaries for report generation. They are not intended for verbatim reuse.",
+  "blocks": [
+    {
+      "id": "Kimi_Agent_4_feasibility_report_review_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/feasibility-report-review.md",
+      "title": "feasibility-report-review",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "专家"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：2天、40%、1天、30%、5天。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：专家，含2天、40%、1天、30%、5天等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "market",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "market",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "保险",
+        "医院",
+        "质子",
+        "重离子",
+        "手术",
+        "放疗",
+        "化疗"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2023年、67%、15%、30%、2024年。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管/心胸，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、保险、医院、质子、重离子、手术、放疗、化疗，含2023年、67%、15%、30%、2024年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "market",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "market",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "医院",
+        "分期",
+        "手术",
+        "免疫"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2024年、2035年、8.4%、7%、70%。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：医院、分期、手术、免疫，含2024年、2035年、8.4%、7%、70%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "travel",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "travel",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "专家",
+        "质子",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为来华行程、签证、住宿和陪同安排参考，按紧急程度调整。可参考的数值线索包括：35%、42%、25%、1%、20%。",
+      "evidenceSummary": "该资料被抽象为来华就医行程与签证参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：费用、保险、签证、医院、专家、质子、手术、放疗，含35%、42%、25%、1%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "travel",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "travel",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "签证",
+        "邀请函",
+        "翻译",
+        "随访",
+        "医院",
+        "专家",
+        "质子",
+        "重离子",
+        "病理"
+      ],
+      "guidance": "作为来华行程、签证、住宿和陪同安排参考，按紧急程度调整。可参考的数值线索包括：2025年、3月、30天、2024年、9月。",
+      "evidenceSummary": "该资料被抽象为来华就医行程与签证参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、内分泌代谢，地区线索：北美、欧洲、东南亚，涉及要点：费用、签证、邀请函、翻译、随访、医院、专家、质子，含2025年、3月、30天、2024年、9月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_5",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "医院",
+        "专家",
+        "国际部",
+        "手术",
+        "靶向"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：42%、2025年、3月、72 小时、70%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：费用、医院、专家、国际部、手术、靶向，含42%、2025年、3月、72 小时、70%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_6",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "翻译",
+        "医院"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：48 小时、30 天、3 天、2025 年、5年。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸，地区线索：北美，涉及要点：翻译、医院，含48 小时、30 天、3 天、2025 年、5年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_7",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "费用",
+        "医院",
+        "专家",
+        "达芬奇",
+        "手术",
+        "靶向"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：70%、35%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，涉及要点：费用、医院、专家、达芬奇、手术、靶向，含70%、35%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_8",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "医院",
+        "质子"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：医院、质子；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_9",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "report_structure",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "report_structure",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "医院",
+        "质子"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。可参考的数值线索包括：35%、25%、20%。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、医院、质子，含35%、25%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_10",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美，涉及要点：医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_11",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：1小时。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含1小时等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_12",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "费用"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：1%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：费用，含1%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_13",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "费用",
+        "翻译"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：50%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：费用、翻译，含50%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_14",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "医院",
+        "分期"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：医院、分期；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_15",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "医院",
+        "专家",
+        "基因"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，涉及要点：医院、专家、基因；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_16",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "cost",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "随访",
+        "专家",
+        "质子",
+        "手术",
+        "放疗"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：$280,000、$350,000。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、随访、专家、质子、手术、放疗，含$280,000、$350,000等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_17",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "report_structure",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "report_structure"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。可参考的数值线索包括：24小时。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，含24小时等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_18",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "费用",
+        "医院"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美，涉及要点：费用、医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_19",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，涉及要点：医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_20",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "general"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：45%、35%、20%。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，含45%、35%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_21",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_22",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "service",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "service",
+        "翻译"
+      ],
+      "guidance": "作为服务包和跨境随访设计参考，避免营销夸大。",
+      "evidenceSummary": "该资料被抽象为跨境服务与随访安排参考，涉及要点：翻译；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_23",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "report_structure",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "japan_korea"
+      ],
+      "keywords": [
+        "report_structure",
+        "north_america",
+        "japan_korea"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，地区线索：北美、日韩；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_24",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "翻译",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、翻译、医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_25",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：14天、7天。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含14天、7天等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_base_docx_26",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.base.docx",
+      "title": "medical_agent.agent.final.base",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：5%、80%、10%、85%。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含5%、80%、10%、85%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "随访",
+        "医院",
+        "专家",
+        "国际部",
+        "质子",
+        "达芬奇",
+        "手术",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2023年、67%、15%、30%、85%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、保险、随访、医院、专家、国际部、质子、达芬奇，含2023年、67%、15%、30%、85%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "market",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "market",
+        "breast_cancer",
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "翻译",
+        "医院",
+        "质子",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：¥500、5%、60%、$50、$200。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：乳腺肿瘤、肺部肿瘤、心血管/心胸，地区线索：北美、欧洲、东南亚，涉及要点：翻译、医院、质子、手术、放疗、化疗、靶向、免疫，含¥500、5%、60%、$50、$200等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "医院",
+        "质子",
+        "重离子",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：$100、$150、$25、$40、$30。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、医院、质子、重离子、手术、放疗、化疗、靶向，含$100、$150、$25、$40、$30等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "cost",
+      "diseaseKeys": [
+        "dental",
+        "cardiology_cardiothoracic",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "cost",
+        "dental",
+        "cardiology_cardiothoracic",
+        "premium_checkup",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "保险",
+        "翻译",
+        "随访",
+        "医院",
+        "质子",
+        "重离子",
+        "手术"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：62天、67.3%、2025年、6月、40%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：牙科/口腔、心血管/心胸、高端体检，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、保险、翻译、随访、医院、质子、重离子、手术，含62天、67.3%、2025年、6月、40%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_5",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "签证",
+        "医院",
+        "专家",
+        "手术"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2023年、2030年、7.7%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸、内分泌代谢，地区线索：北美、欧洲、东南亚、日韩、中东，涉及要点：费用、签证、医院、专家、手术，含2023年、2030年、7.7%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_6",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "专家",
+        "质子",
+        "重离子",
+        "达芬奇",
+        "分期",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：25%、35%、10%、15%、20%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、保险、签证、医院、专家、质子、重离子、达芬奇，含25%、35%、10%、15%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_7",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "disease",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "disease",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "医院",
+        "质子",
+        "病理",
+        "基因",
+        "分期",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为疾病路径、检查材料和治疗排序参考，需结合用户上传资料判断适用性。可参考的数值线索包括：99.9%、2周、6月、12月、24月。",
+      "evidenceSummary": "该资料被抽象为疾病路径和资料要求参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美、欧洲、东南亚，涉及要点：费用、医院、质子、病理、基因、分期、手术、放疗，含99.9%、2周、6月、12月、24月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_8",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "签证",
+        "翻译",
+        "医院",
+        "专家",
+        "质子",
+        "重离子",
+        "达芬奇",
+        "基因",
+        "分期",
+        "手术",
+        "放疗",
+        "化疗"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：25%、35%、10%、15%、20%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：费用、保险、签证、翻译、医院、专家、质子、重离子，含25%、35%、10%、15%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_9",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "insurance",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "insurance",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "国际部",
+        "质子",
+        "重离子",
+        "分期"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。可参考的数值线索包括：$15,000、$12,000、$8,000、$3,500、$2,500。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、内分泌代谢，地区线索：北美、欧洲、东南亚、日韩、中东，涉及要点：费用、保险、签证、医院、国际部、质子、重离子、分期，含$15,000、$12,000、$8,000、$3,500、$2,500等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_10",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "travel",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "travel",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "签证",
+        "邀请函",
+        "翻译",
+        "医院",
+        "专家",
+        "质子",
+        "重离子"
+      ],
+      "guidance": "作为来华行程、签证、住宿和陪同安排参考，按紧急程度调整。可参考的数值线索包括：$80,000、$120,000、5年、90%、4周。",
+      "evidenceSummary": "该资料被抽象为来华就医行程与签证参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、内分泌代谢，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、签证、邀请函、翻译、医院、专家、质子，含$80,000、$120,000、5年、90%、4周等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_11",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "保险",
+        "翻译",
+        "随访",
+        "医院",
+        "专家"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：72 小时、70%、7 天、50%、60%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美、欧洲、东南亚、日韩、中东，涉及要点：费用、保险、翻译、随访、医院、专家，含72 小时、70%、7 天、50%、60%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_12",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "医院",
+        "专家",
+        "国际部",
+        "病理",
+        "影像",
+        "手术",
+        "化疗"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：¥150,000、¥500,000、¥200,000、$150,000、¥100,000。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、医院、专家、国际部、病理、影像、手术、化疗，含¥150,000、¥500,000、¥200,000、$150,000、¥100,000等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_13",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "cost",
+      "diseaseKeys": [
+        "liver_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "liver_cancer",
+        "north_america",
+        "费用",
+        "翻译",
+        "随访",
+        "医院",
+        "专家"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：10%、30 天、48 小时、3 月、6 月。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：肝脏疾病/肿瘤，地区线索：北美，涉及要点：费用、翻译、随访、医院、专家，含10%、30 天、48 小时、3 月、6 月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_14",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "翻译",
+        "医院"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：3 天、2025 年、5年、70%、23%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸，涉及要点：翻译、医院，含3 天、2025 年、5年、70%、23%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_15",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "费用",
+        "签证",
+        "翻译",
+        "随访",
+        "医院",
+        "专家",
+        "质子",
+        "达芬奇",
+        "手术",
+        "靶向"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：70%、25%、20%、15%、5年。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，涉及要点：费用、签证、翻译、随访、医院、专家、质子、达芬奇，含70%、25%、20%、15%、5年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_16",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "cost",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "医院",
+        "专家",
+        "质子",
+        "病理",
+        "手术",
+        "化疗"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：2.9%、$0、$50,000、3.49%、$10,000。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、医院、专家、质子、病理、手术、化疗，含2.9%、$0、$50,000、3.49%、$10,000等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_17",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "翻译",
+        "医院",
+        "专家",
+        "质子",
+        "分期",
+        "手术",
+        "放疗",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：$150、$300、5年、97%、$200。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、保险、翻译、医院、专家、质子、分期、手术，含$150、$300、5年、97%、$200等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_18",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "report_structure",
+      "diseaseKeys": [
+        "dental"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "report_structure",
+        "dental",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "签证",
+        "翻译",
+        "医院",
+        "专家",
+        "分期",
+        "手术"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。可参考的数值线索包括：99.5%、99.9%、99.2%、99.7%、99.8%。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，适用病种线索：牙科/口腔，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、签证、翻译、医院、专家、分期、手术，含99.5%、99.9%、99.2%、99.7%、99.8%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_19",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "翻译",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、翻译、医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_20",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "disease",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "disease",
+        "north_america",
+        "费用",
+        "医院",
+        "专家",
+        "分期",
+        "手术"
+      ],
+      "guidance": "作为疾病路径、检查材料和治疗排序参考，需结合用户上传资料判断适用性。",
+      "evidenceSummary": "该资料被抽象为疾病路径和资料要求参考，地区线索：北美，涉及要点：费用、医院、专家、分期、手术；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_21",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "费用",
+        "保险",
+        "医院",
+        "专家",
+        "手术"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：20%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美，涉及要点：费用、保险、医院、专家、手术，含20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_converted_md_22",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.converted.md",
+      "title": "medical_agent.agent.final.converted",
+      "category": "hospital",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "southeast_asia"
+      ],
+      "keywords": [
+        "hospital",
+        "cardiology_cardiothoracic",
+        "premium_checkup",
+        "southeast_asia",
+        "费用",
+        "医院",
+        "专家",
+        "体检"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：心血管/心胸、高端体检，地区线索：东南亚，涉及要点：费用、医院、专家、体检；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "market",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "market",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "保险",
+        "医院",
+        "质子",
+        "重离子",
+        "手术",
+        "放疗",
+        "化疗"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2023年、67%、15%、30%、2024年。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管/心胸，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、保险、医院、质子、重离子、手术、放疗、化疗，含2023年、67%、15%、30%、2024年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "医院",
+        "分期",
+        "手术",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：7%、70%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：医院、分期、手术、免疫，含7%、70%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "travel",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "travel",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "专家",
+        "质子",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为来华行程、签证、住宿和陪同安排参考，按紧急程度调整。可参考的数值线索包括：35%、42%、25%、1%、20%。",
+      "evidenceSummary": "该资料被抽象为来华就医行程与签证参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：费用、保险、签证、医院、专家、质子、手术、放疗，含35%、42%、25%、1%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "travel",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "travel",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "签证",
+        "邀请函",
+        "翻译",
+        "随访",
+        "医院",
+        "专家",
+        "质子",
+        "重离子",
+        "病理"
+      ],
+      "guidance": "作为来华行程、签证、住宿和陪同安排参考，按紧急程度调整。可参考的数值线索包括：2025年、3月、30天、2024年、9月。",
+      "evidenceSummary": "该资料被抽象为来华就医行程与签证参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、内分泌代谢，地区线索：北美、欧洲、东南亚，涉及要点：费用、签证、邀请函、翻译、随访、医院、专家、质子，含2025年、3月、30天、2024年、9月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_5",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "医院",
+        "专家",
+        "国际部",
+        "手术",
+        "靶向"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：42%、2025年、3月、72 小时、70%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：费用、医院、专家、国际部、手术、靶向，含42%、2025年、3月、72 小时、70%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_6",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "翻译",
+        "医院"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：48 小时、30 天、3 天、2025 年、5年。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸，地区线索：北美，涉及要点：翻译、医院，含48 小时、30 天、3 天、2025 年、5年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_7",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "费用",
+        "医院",
+        "专家",
+        "达芬奇",
+        "手术",
+        "靶向"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：70%、35%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，涉及要点：费用、医院、专家、达芬奇、手术、靶向，含70%、35%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_8",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "医院",
+        "质子"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：医院、质子；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_9",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "report_structure",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "report_structure",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "医院",
+        "质子"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。可参考的数值线索包括：35%、25%、20%。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、医院、质子，含35%、25%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_10",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美，涉及要点：医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_11",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：1小时。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含1小时等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_12",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "费用"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：1%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：费用，含1%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_13",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "费用",
+        "翻译"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：50%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：费用、翻译，含50%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_14",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "医院",
+        "分期"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：医院、分期；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_15",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "医院",
+        "专家",
+        "基因"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，涉及要点：医院、专家、基因；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_16",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "cost",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "随访",
+        "专家",
+        "质子",
+        "手术",
+        "放疗"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：$280,000、$350,000。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、随访、专家、质子、手术、放疗，含$280,000、$350,000等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_17",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "report_structure",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "report_structure"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。可参考的数值线索包括：24小时。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，含24小时等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_18",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "费用",
+        "医院"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美，涉及要点：费用、医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_19",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，涉及要点：医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_20",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "general"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：45%、35%、20%。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，含45%、35%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_21",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_22",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "service",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "service",
+        "翻译"
+      ],
+      "guidance": "作为服务包和跨境随访设计参考，避免营销夸大。",
+      "evidenceSummary": "该资料被抽象为跨境服务与随访安排参考，涉及要点：翻译；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_23",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "report_structure",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "japan_korea"
+      ],
+      "keywords": [
+        "report_structure",
+        "north_america",
+        "japan_korea"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，地区线索：北美、日韩；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_24",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "翻译",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、翻译、医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_25",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：14天、7天。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含14天、7天等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_footnote_docx_26",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.footnote.docx",
+      "title": "medical_agent.agent.final.footnote",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：5%、80%、10%、85%。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含5%、80%、10%、85%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "随访",
+        "医院",
+        "专家",
+        "国际部",
+        "质子",
+        "达芬奇",
+        "手术",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2023年、67%、15%、30%、85%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、保险、随访、医院、专家、国际部、质子、达芬奇，含2023年、67%、15%、30%、85%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "market",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "market",
+        "breast_cancer",
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "翻译",
+        "医院",
+        "质子",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：¥500、5%、60%、$50、$200。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：乳腺肿瘤、肺部肿瘤、心血管/心胸，地区线索：北美、欧洲、东南亚，涉及要点：翻译、医院、质子、手术、放疗、化疗、靶向、免疫，含¥500、5%、60%、$50、$200等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "医院",
+        "质子",
+        "重离子",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：$100、$150、$25、$40、$30。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、医院、质子、重离子、手术、放疗、化疗、靶向，含$100、$150、$25、$40、$30等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "cost",
+      "diseaseKeys": [
+        "dental",
+        "cardiology_cardiothoracic",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "cost",
+        "dental",
+        "cardiology_cardiothoracic",
+        "premium_checkup",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "保险",
+        "翻译",
+        "随访",
+        "医院",
+        "质子",
+        "重离子",
+        "手术"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：62天、67.3%、2025年、6月、40%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：牙科/口腔、心血管/心胸、高端体检，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、保险、翻译、随访、医院、质子、重离子、手术，含62天、67.3%、2025年、6月、40%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_5",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "专家"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：25%、35%、10%、15%、20%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸、内分泌代谢，地区线索：北美、欧洲、东南亚、日韩、中东，涉及要点：费用、保险、签证、医院、专家，含25%、35%、10%、15%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_6",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "费用",
+        "医院",
+        "专家",
+        "质子",
+        "重离子",
+        "达芬奇",
+        "分期",
+        "手术"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：99.9%、2周。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美，涉及要点：费用、医院、专家、质子、重离子、达芬奇、分期、手术，含99.9%、2周等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_7",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "disease",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "disease",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "质子",
+        "病理",
+        "基因",
+        "分期",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向"
+      ],
+      "guidance": "作为疾病路径、检查材料和治疗排序参考，需结合用户上传资料判断适用性。可参考的数值线索包括：6月、12月、24月、7%、25%。",
+      "evidenceSummary": "该资料被抽象为疾病路径和资料要求参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、签证、医院、质子、病理、基因、分期，含6月、12月、24月、7%、25%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_8",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "签证",
+        "翻译",
+        "医院",
+        "专家",
+        "质子",
+        "重离子",
+        "达芬奇",
+        "基因",
+        "分期",
+        "手术",
+        "放疗",
+        "化疗"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：60%、15%、20%、30%、25%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：费用、保险、签证、翻译、医院、专家、质子、重离子，含60%、15%、20%、30%、25%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_9",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "insurance",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "insurance",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "国际部",
+        "质子",
+        "重离子",
+        "分期"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。可参考的数值线索包括：$15,000、$12,000、$8,000、$3,500、$2,500。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、内分泌代谢，地区线索：北美、欧洲、东南亚、日韩、中东，涉及要点：费用、保险、签证、医院、国际部、质子、重离子、分期，含$15,000、$12,000、$8,000、$3,500、$2,500等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_10",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "travel",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "travel",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "签证",
+        "邀请函",
+        "翻译",
+        "医院",
+        "专家",
+        "病理",
+        "影像"
+      ],
+      "guidance": "作为来华行程、签证、住宿和陪同安排参考，按紧急程度调整。可参考的数值线索包括：$45,000、$80,000、$70,000、$110,000、$15。",
+      "evidenceSummary": "该资料被抽象为来华就医行程与签证参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、内分泌代谢，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、签证、邀请函、翻译、医院、专家、病理，含$45,000、$80,000、$70,000、$110,000、$15等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_11",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "保险",
+        "翻译",
+        "随访",
+        "医院",
+        "专家",
+        "病理",
+        "影像",
+        "手术",
+        "化疗"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：7 天、50%、60%、35%、25%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美、欧洲、东南亚、日韩、中东，涉及要点：费用、保险、翻译、随访、医院、专家、病理、影像，含7 天、50%、60%、35%、25%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_12",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "医院",
+        "专家",
+        "国际部"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：25%、20%、15%、100%、4\n月。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美、欧洲、东南亚、日韩，涉及要点：医院、专家、国际部，含25%、20%、15%、100%、4\n月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_13",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "费用",
+        "翻译",
+        "随访",
+        "医院",
+        "专家"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：3 月、6 月、11 月、60 天、50%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸，涉及要点：费用、翻译、随访、医院、专家，含3 月、6 月、11 月、60 天、50%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_14",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "费用",
+        "翻译",
+        "医院",
+        "手术"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：70%、5年、23%、25%、20%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸，涉及要点：费用、翻译、医院、手术，含70%、5年、23%、25%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_15",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "签证",
+        "翻译",
+        "随访",
+        "医院",
+        "专家",
+        "质子",
+        "达芬奇",
+        "手术",
+        "靶向"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：5年、35%、30%、25%、20%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：费用、签证、翻译、随访、医院、专家、质子、达芬奇，含5年、35%、30%、25%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_16",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "翻译",
+        "医院",
+        "专家",
+        "质子",
+        "病理",
+        "分期",
+        "手术",
+        "放疗",
+        "化疗",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：200%、20%、80%、85%、$150。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、保险、翻译、医院、专家、质子、病理、分期，含200%、20%、80%、85%、$150等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_17",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "专家",
+        "分期"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、签证、医院、专家、分期；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_18",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "report_structure",
+      "diseaseKeys": [
+        "dental",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "report_structure",
+        "dental",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "翻译",
+        "医院",
+        "手术"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。可参考的数值线索包括：99.5%、99.9%、99.2%、99.7%、99.8%。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，适用病种线索：牙科/口腔、肺部肿瘤，地区线索：北美，涉及要点：费用、翻译、医院、手术，含99.5%、99.9%、99.2%、99.7%、99.8%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_19",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "费用",
+        "医院",
+        "专家",
+        "手术"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美，涉及要点：费用、医院、专家、手术；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_20",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "disease",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "disease",
+        "north_america",
+        "费用",
+        "医院",
+        "分期",
+        "手术"
+      ],
+      "guidance": "作为疾病路径、检查材料和治疗排序参考，需结合用户上传资料判断适用性。",
+      "evidenceSummary": "该资料被抽象为疾病路径和资料要求参考，地区线索：北美，涉及要点：费用、医院、分期、手术；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_agent_final_md_21",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent.agent.final.md",
+      "title": "medical_agent.agent.final",
+      "category": "hospital",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "hospital",
+        "cardiology_cardiothoracic",
+        "premium_checkup",
+        "north_america",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "医院",
+        "专家",
+        "手术",
+        "体检"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：20%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：心血管/心胸、高端体检，地区线索：北美、东南亚，涉及要点：费用、保险、医院、专家、手术、体检，含20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec01_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec01.md",
+      "title": "medical_agent_sec01",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "随访",
+        "医院",
+        "专家",
+        "国际部",
+        "质子",
+        "达芬奇",
+        "手术",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2023年、67%、15%、30%、85%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、保险、随访、医院、专家、国际部、质子、达芬奇，含2023年、67%、15%、30%、85%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec01_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec01.md",
+      "title": "medical_agent_sec01",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "翻译",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：¥500、5%、60%、$50、$200。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，涉及要点：翻译、医院，含¥500、5%、60%、$50、$200等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec02_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec02.md",
+      "title": "medical_agent_sec02",
+      "category": "market",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "market",
+        "breast_cancer",
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "医院",
+        "质子",
+        "重离子",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2025年、2026年、2035年、8.4%、2022年。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：乳腺肿瘤、肺部肿瘤、心血管/心胸，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、医院、质子、重离子、手术、放疗、化疗、靶向，含2025年、2026年、2035年、8.4%、2022年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec02_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec02.md",
+      "title": "medical_agent_sec02",
+      "category": "cost",
+      "diseaseKeys": [
+        "dental",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "cost",
+        "dental",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic",
+        "premium_checkup",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "保险",
+        "医院",
+        "质子",
+        "重离子",
+        "手术"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：$488、$760、$50、$80、1年。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：牙科/口腔、乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管/心胸、高端体检，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、保险、医院、质子、重离子、手术，含$488、$760、$50、$80、1年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec02_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec02.md",
+      "title": "medical_agent_sec02",
+      "category": "market",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "market",
+        "费用",
+        "翻译",
+        "随访",
+        "医院",
+        "质子",
+        "重离子"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：$144、$190、$761、19%、25%。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，涉及要点：费用、翻译、随访、医院、质子、重离子，含$144、$190、$761、19%、25%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec03_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec03.md",
+      "title": "medical_agent_sec03",
+      "category": "market",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "market",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "签证",
+        "医院",
+        "专家"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2024年、2035年、8.4%、2023年、2030年。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸、内分泌代谢，地区线索：北美、欧洲、东南亚、日韩、中东，涉及要点：费用、签证、医院、专家，含2024年、2035年、8.4%、2023年、2030年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec03_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec03.md",
+      "title": "medical_agent_sec03",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "专家",
+        "质子",
+        "重离子",
+        "达芬奇",
+        "分期",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：25%、35%、10%、15%、20%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，涉及要点：费用、保险、签证、医院、专家、质子、重离子、达芬奇，含25%、35%、10%、15%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec03_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec03.md",
+      "title": "medical_agent_sec03",
+      "category": "report_structure",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "report_structure",
+        "north_america",
+        "医院",
+        "专家"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。可参考的数值线索包括：99.9%、2周、6月、12月、24月。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，地区线索：北美，涉及要点：医院、专家，含99.9%、2周、6月、12月、24月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec04_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec04.md",
+      "title": "medical_agent_sec04",
+      "category": "disease",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "disease",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "质子",
+        "重离子",
+        "达芬奇",
+        "病理",
+        "基因",
+        "分期",
+        "手术",
+        "放疗"
+      ],
+      "guidance": "作为疾病路径、检查材料和治疗排序参考，需结合用户上传资料判断适用性。可参考的数值线索包括：7%、25%、35%、10%、15%。",
+      "evidenceSummary": "该资料被抽象为疾病路径和资料要求参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、签证、医院、质子、重离子、达芬奇、病理，含7%、25%、35%、10%、15%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec04_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec04.md",
+      "title": "medical_agent_sec04",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "保险",
+        "签证",
+        "翻译",
+        "医院",
+        "专家",
+        "国际部",
+        "质子",
+        "基因",
+        "分期"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：60%、15%、20%、30%、25%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美、欧洲、东南亚、日韩、中东，涉及要点：费用、保险、签证、翻译、医院、专家、国际部、质子，含60%、15%、20%、30%、25%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec04_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec04.md",
+      "title": "medical_agent_sec04",
+      "category": "insurance",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "insurance",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "医院",
+        "质子",
+        "重离子",
+        "手术",
+        "放疗",
+        "靶向"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。可参考的数值线索包括：1年、$35,000、$55,000、$8、$12。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、内分泌代谢，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、医院、质子、重离子、手术、放疗、靶向，含1年、$35,000、$55,000、$8、$12等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec04_md_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec04.md",
+      "title": "medical_agent_sec04",
+      "category": "travel",
+      "diseaseKeys": [
+        "liver_cancer"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "travel",
+        "liver_cancer",
+        "费用",
+        "保险",
+        "签证",
+        "邀请函",
+        "翻译",
+        "医院",
+        "专家",
+        "病理",
+        "影像",
+        "基因",
+        "分期"
+      ],
+      "guidance": "作为来华行程、签证、住宿和陪同安排参考，按紧急程度调整。可参考的数值线索包括：3个工作日、7个工作日、4周、1周、$299。",
+      "evidenceSummary": "该资料被抽象为来华就医行程与签证参考，适用病种线索：肝脏疾病/肿瘤，涉及要点：费用、保险、签证、邀请函、翻译、医院、专家、病理，含3个工作日、7个工作日、4周、1周、$299等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec05_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec05.md",
+      "title": "medical_agent_sec05",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "保险",
+        "翻译",
+        "随访",
+        "医院",
+        "专家"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：72 小时、70%、7 天、50%、60%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美、欧洲、东南亚、日韩、中东，涉及要点：费用、保险、翻译、随访、医院、专家，含72 小时、70%、7 天、50%、60%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec05_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec05.md",
+      "title": "medical_agent_sec05",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "医院",
+        "专家",
+        "国际部",
+        "病理",
+        "影像",
+        "手术",
+        "化疗"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：¥150,000、¥500,000、¥200,000、$150,000、¥100,000。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、医院、专家、国际部、病理、影像、手术、化疗，含¥150,000、¥500,000、¥200,000、$150,000、¥100,000等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec05_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec05.md",
+      "title": "medical_agent_sec05",
+      "category": "cost",
+      "diseaseKeys": [
+        "liver_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "liver_cancer",
+        "north_america",
+        "费用",
+        "翻译",
+        "随访",
+        "医院",
+        "专家"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：10%、30 天、48 小时、3 月、6 月。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：肝脏疾病/肿瘤，地区线索：北美，涉及要点：费用、翻译、随访、医院、专家，含10%、30 天、48 小时、3 月、6 月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec06_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec06.md",
+      "title": "medical_agent_sec06",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "费用",
+        "翻译",
+        "医院",
+        "手术"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：5年、70%、23%、25%、20%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸，涉及要点：费用、翻译、医院、手术，含5年、70%、23%、25%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec06_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec06.md",
+      "title": "medical_agent_sec06",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "签证",
+        "翻译",
+        "随访",
+        "医院",
+        "专家",
+        "质子",
+        "达芬奇",
+        "手术",
+        "靶向"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：5年、35%、30%、25%、20%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：费用、签证、翻译、随访、医院、专家、质子、达芬奇，含5年、35%、30%、25%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec06_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec06.md",
+      "title": "medical_agent_sec06",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "general"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：30%、1年、200%。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，含30%、1年、200%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec07_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec07.md",
+      "title": "medical_agent_sec07",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "翻译",
+        "医院",
+        "专家",
+        "质子",
+        "病理",
+        "分期",
+        "手术",
+        "放疗",
+        "化疗",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：20%、80%、85%、$150、$300。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、保险、翻译、医院、专家、质子、病理、分期，含20%、80%、85%、$150、$300等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec07_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec07.md",
+      "title": "medical_agent_sec07",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "专家",
+        "分期"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、签证、医院、专家、分期；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec07_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec07.md",
+      "title": "medical_agent_sec07",
+      "category": "report_structure",
+      "diseaseKeys": [
+        "dental",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "report_structure",
+        "dental",
+        "lung_cancer",
+        "north_america",
+        "翻译",
+        "医院",
+        "手术"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。可参考的数值线索包括：99.5%、99.9%、99.2%、99.7%、99.8%。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，适用病种线索：牙科/口腔、肺部肿瘤，地区线索：北美，涉及要点：翻译、医院、手术，含99.5%、99.9%、99.2%、99.7%、99.8%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec08_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec08.md",
+      "title": "medical_agent_sec08",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "费用",
+        "医院",
+        "手术"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美，涉及要点：费用、医院、手术；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec08_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec08.md",
+      "title": "medical_agent_sec08",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "费用",
+        "医院",
+        "专家",
+        "分期",
+        "手术"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美，涉及要点：费用、医院、专家、分期、手术；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec08_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec08.md",
+      "title": "medical_agent_sec08",
+      "category": "hospital",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "hospital",
+        "cardiology_cardiothoracic",
+        "premium_checkup",
+        "north_america",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "医院",
+        "专家",
+        "国际部",
+        "手术",
+        "体检"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：20%、7天、14天。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：心血管/心胸、高端体检，地区线索：北美、东南亚，涉及要点：费用、保险、医院、专家、国际部、手术、体检，含20%、7天、14天等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec08_md_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec08.md",
+      "title": "medical_agent_sec08",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "southeast_asia",
+        "费用",
+        "医院"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：7天、48小时、30天、2.9%、$0。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美、东南亚，涉及要点：费用、医院，含7天、48小时、30天、2.9%、$0等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec09_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec09.md",
+      "title": "medical_agent_sec09",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "southeast_asia"
+      ],
+      "keywords": [
+        "hospital",
+        "southeast_asia",
+        "费用",
+        "签证",
+        "翻译",
+        "医院",
+        "专家",
+        "国际部"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：6周、¥3,000、¥200、72小时、50%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：东南亚，涉及要点：费用、签证、翻译、医院、专家、国际部，含6周、¥3,000、¥200、72小时、50%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec09_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec09.md",
+      "title": "medical_agent_sec09",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "费用",
+        "保险",
+        "签证",
+        "翻译",
+        "医院",
+        "专家",
+        "国际部"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：98.5%、24小时、¥9,999、$165、$3,600。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：费用、保险、签证、翻译、医院、专家、国际部，含98.5%、24小时、¥9,999、$165、$3,600等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec09_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec09.md",
+      "title": "medical_agent_sec09",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "费用",
+        "医院"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：50%、25%、70%、40%、8%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：费用、医院，含50%、25%、70%、40%、8%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec09_md_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec09.md",
+      "title": "medical_agent_sec09",
+      "category": "market",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "market",
+        "north_america",
+        "保险"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：$76、8.4%、70%、50%、¥3,000。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，地区线索：北美，涉及要点：保险，含$76、8.4%、70%、50%、¥3,000等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec10_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec10.md",
+      "title": "medical_agent_sec10",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "医院"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：2027年、8月、31%、0.3%、4%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美，涉及要点：医院，含2027年、8月、31%、0.3%、4%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec10_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec10.md",
+      "title": "medical_agent_sec10",
+      "category": "hospital",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "医院",
+        "影像",
+        "手术"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：6年、3年、1小时、2025年、76%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：心血管/心胸，地区线索：北美，涉及要点：医院、影像、手术，含6年、3年、1小时、2025年、76%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec10_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec10.md",
+      "title": "medical_agent_sec10",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer",
+        "liver_cancer",
+        "neurosurgery",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "liver_cancer",
+        "neurosurgery",
+        "endocrinology_metabolism",
+        "north_america",
+        "费用",
+        "保险",
+        "医院",
+        "糖尿病"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：10%、72小时、24小时、48小时、28.6%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤、肝脏疾病/肿瘤、神经外科、内分泌代谢，地区线索：北美，涉及要点：费用、保险、医院、糖尿病，含10%、72小时、24小时、48小时、28.6%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec10_md_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec10.md",
+      "title": "medical_agent_sec10",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：76%、98.1%、31%、0.3%。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含76%、98.1%、31%、0.3%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec10_md_5",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec10.md",
+      "title": "medical_agent_sec10",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：39.6%、8%、0%、6%、40%。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含39.6%、8%、0%、6%、40%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec11_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec11.md",
+      "title": "medical_agent_sec11",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia",
+        "middle_east"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "southeast_asia",
+        "middle_east",
+        "费用",
+        "随访",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2周、2小时、¥299、70%、45%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美、东南亚、中东，涉及要点：费用、随访、医院，含2周、2小时、¥299、70%、45%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_medical_agent_sec11_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/medical_agent_sec11.md",
+      "title": "medical_agent_sec11",
+      "category": "medical_safety",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "medical_safety",
+        "医院"
+      ],
+      "guidance": "作为合规与风险披露约束，缺资料时明确提示，不输出诊断承诺或疗效承诺。可参考的数值线索包括：1月、3月、7月、11月、9月。",
+      "evidenceSummary": "该资料被抽象为医学安全与合规边界参考，涉及要点：医院，含1月、3月、7月、11月、9月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_plan_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/plan.md",
+      "title": "plan",
+      "category": "service",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "service",
+        "费用",
+        "翻译",
+        "随访",
+        "医院",
+        "专家",
+        "病理",
+        "影像",
+        "基因"
+      ],
+      "guidance": "作为服务包和跨境随访设计参考，避免营销夸大。可参考的数值线索包括：21天、$56、$185、$425。",
+      "evidenceSummary": "该资料被抽象为跨境服务与随访安排参考，涉及要点：费用、翻译、随访、医院、专家、病理、影像、基因，含21天、$56、$185、$425等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_report_enhancement_plan_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/report-enhancement-plan.md",
+      "title": "report-enhancement-plan",
+      "category": "insurance",
+      "diseaseKeys": [
+        "dental",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "australia_new_zealand"
+      ],
+      "keywords": [
+        "insurance",
+        "dental",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "australia_new_zealand",
+        "费用",
+        "保险",
+        "翻译",
+        "陪诊",
+        "医院",
+        "质子",
+        "重离子",
+        "bnct",
+        "达芬奇",
+        "手术"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。可参考的数值线索包括：$500、$200、98.5%、$2、$15。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，适用病种线索：牙科/口腔、心血管/心胸，地区线索：北美、欧洲、东南亚、日韩、澳新，涉及要点：费用、保险、翻译、陪诊、医院、质子、重离子、bnct，含$500、$200、98.5%、$2、$15等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim01_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim01.md",
+      "title": "medical_agent_dim01",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "质子",
+        "重离子",
+        "手术",
+        "放疗",
+        "甲状腺"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：$40、$80、$8、$4、$10。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、内分泌代谢，地区线索：北美、欧洲、东南亚，涉及要点：费用、质子、重离子、手术、放疗、甲状腺，含$40、$80、$8、$4、$10等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim01_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim01.md",
+      "title": "medical_agent_dim01",
+      "category": "equipment",
+      "diseaseKeys": [
+        "dental",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "equipment",
+        "dental",
+        "lung_cancer",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "医院",
+        "质子",
+        "重离子",
+        "靶向"
+      ],
+      "guidance": "作为设备和技术可及性参考，只在与当前病种相关时使用。可参考的数值线索包括：$10,000、$50,000、$120,000、$600,000、$5,000。",
+      "evidenceSummary": "该资料被抽象为设备和技术可及性参考，适用病种线索：牙科/口腔、肺部肿瘤，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、医院、质子、重离子、靶向，含$10,000、$50,000、$120,000、$600,000、$5,000等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim01_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim01.md",
+      "title": "medical_agent_dim01",
+      "category": "equipment",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "equipment",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "保险",
+        "质子",
+        "重离子",
+        "手术"
+      ],
+      "guidance": "作为设备和技术可及性参考，只在与当前病种相关时使用。可参考的数值线索包括：$375、$475、$300、$350、$150。",
+      "evidenceSummary": "该资料被抽象为设备和技术可及性参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、保险、质子、重离子、手术，含$375、$475、$300、$350、$150等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim01_md_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim01.md",
+      "title": "medical_agent_dim01",
+      "category": "equipment",
+      "diseaseKeys": [
+        "neurosurgery"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "equipment",
+        "neurosurgery",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "质子",
+        "重离子",
+        "手术",
+        "放疗",
+        "化疗",
+        "免疫"
+      ],
+      "guidance": "作为设备和技术可及性参考，只在与当前病种相关时使用。可参考的数值线索包括：$300、$1,000、$150、$400、$30。",
+      "evidenceSummary": "该资料被抽象为设备和技术可及性参考，适用病种线索：神经外科，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、质子、重离子、手术、放疗、化疗、免疫，含$300、$1,000、$150、$400、$30等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim01_md_5",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim01.md",
+      "title": "medical_agent_dim01",
+      "category": "equipment",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "equipment",
+        "north_america",
+        "医院",
+        "质子",
+        "重离子",
+        "手术"
+      ],
+      "guidance": "作为设备和技术可及性参考，只在与当前病种相关时使用。可参考的数值线索包括：2025年。",
+      "evidenceSummary": "该资料被抽象为设备和技术可及性参考，地区线索：北美，涉及要点：医院、质子、重离子、手术，含2025年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim02_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim02.md",
+      "title": "medical_agent_dim02",
+      "category": "general",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe"
+      ],
+      "keywords": [
+        "general",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "手术"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：28天、75%、71%、80.5%、2026年。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，适用病种线索：心血管/心胸，地区线索：北美、欧洲，涉及要点：手术，含28天、75%、71%、80.5%、2026年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim02_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim02.md",
+      "title": "medical_agent_dim02",
+      "category": "hospital",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic",
+        "neurosurgery"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "hospital",
+        "cardiology_cardiothoracic",
+        "neurosurgery",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "医院",
+        "病理",
+        "分期",
+        "手术",
+        "化疗",
+        "神经外科"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2小时、4小时、35%、3周、2周。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：心血管/心胸、神经外科，地区线索：北美、欧洲、东南亚，涉及要点：医院、病理、分期、手术、化疗、神经外科，含2小时、4小时、35%、3周、2周等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim02_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim02.md",
+      "title": "medical_agent_dim02",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：90%、16%、9%、5%、2004年。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美、欧洲、东南亚、日韩，涉及要点：医院，含90%、16%、9%、5%、2004年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim02_md_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim02.md",
+      "title": "medical_agent_dim02",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "保险",
+        "医院",
+        "专家",
+        "手术"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2024年、2小时、5小时、1小时、64%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美、欧洲、东南亚、日韩，涉及要点：保险、医院、专家、手术，含2024年、2小时、5小时、1小时、64%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim02_md_5",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim02.md",
+      "title": "medical_agent_dim02",
+      "category": "market",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "market",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "southeast_asia",
+        "医院",
+        "手术"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2025年、2031年、8.4%、18.4%、21.0%。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：心血管/心胸，地区线索：北美、东南亚，涉及要点：医院、手术，含2025年、2031年、8.4%、18.4%、21.0%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim02_md_6",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim02.md",
+      "title": "medical_agent_dim02",
+      "category": "market",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "middle_east"
+      ],
+      "keywords": [
+        "market",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "middle_east",
+        "签证",
+        "医院"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2025年、2030年、4月、4.1%、$8。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：心血管/心胸，地区线索：北美、欧洲、东南亚、中东，涉及要点：签证、医院，含2025年、2030年、4月、4.1%、$8等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim02_md_7",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim02.md",
+      "title": "medical_agent_dim02",
+      "category": "market",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "middle_east"
+      ],
+      "keywords": [
+        "market",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "middle_east",
+        "签证",
+        "医院"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2024年、2025年、13.5%、2026年、2031年。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：心血管/心胸，地区线索：北美、欧洲、东南亚、中东，涉及要点：签证、医院，含2024年、2025年、13.5%、2026年、2031年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim02_md_8",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim02.md",
+      "title": "medical_agent_dim02",
+      "category": "hospital",
+      "diseaseKeys": [
+        "premium_checkup"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "premium_checkup",
+        "医院",
+        "体检"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2025年、109.18%、2024年、36.8%、2023年。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：高端体检，涉及要点：医院、体检，含2025年、109.18%、2024年、36.8%、2023年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim02_md_9",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim02.md",
+      "title": "medical_agent_dim02",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia",
+        "middle_east"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "southeast_asia",
+        "middle_east"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：2024年、2019年、2025年、9月、4.5%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美、东南亚、中东，含2024年、2019年、2025年、9月、4.5%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "endocrinology_metabolism",
+        "north_america",
+        "甲状腺"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：5年、2005年、30.9%、2021年、43.7%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、内分泌代谢，地区线索：北美，涉及要点：甲状腺，含5年、2005年、30.9%、2021年、43.7%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "southeast_asia"
+      ],
+      "keywords": [
+        "hospital",
+        "southeast_asia",
+        "医院",
+        "国际部"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2026年、2003年、12月、2014年、3月。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：东南亚，涉及要点：医院、国际部，含2026年、2003年、12月、2014年、3月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "market",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "market",
+        "化疗",
+        "免疫"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2025年、9月、6天、2月、67%。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，涉及要点：化疗、免疫，含2025年、9月、6天、2月、67%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "cost",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "cost",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "southeast_asia",
+        "费用",
+        "签证",
+        "医院",
+        "手术"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：50%、80%、45%、$4,500、$7,000。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：心血管/心胸，地区线索：北美、东南亚，涉及要点：费用、签证、医院、手术，含50%、80%、45%、$4,500、$7,000等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_5",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "market",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "market",
+        "north_america",
+        "医院",
+        "专家"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2024年、38.08%、9.5%、2025年、15年。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，地区线索：北美，涉及要点：医院、专家，含2024年、38.08%、9.5%、2025年、15年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_6",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "market",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "market",
+        "north_america"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2025年、2035年、24%、24.0%、45%。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，地区线索：北美，含2025年、2035年、24%、24.0%、45%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_7",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "north_america"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：2024年、7月、2021年、$439、$88。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美，含2024年、7月、2021年、$439、$88等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_8",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "market",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe"
+      ],
+      "keywords": [
+        "market",
+        "north_america",
+        "europe"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2007年、50%、2025年、13%、2024年。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，地区线索：北美、欧洲，含2007年、50%、2025年、13%、2024年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_9",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "market",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "market",
+        "lung_cancer",
+        "north_america"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2025年、2020年、100%、2024年、45%。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：肺部肿瘤，地区线索：北美，含2025年、2020年、100%、2024年、45%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_10",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "general"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：61.1%、43.7%、49.1%、100%、2024年。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，含61.1%、43.7%、49.1%、100%、2024年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_11",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "southeast_asia",
+        "费用",
+        "签证",
+        "医院",
+        "国际部",
+        "手术"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：30%、5年、43.7%、2024年、2025年。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、心血管/心胸，地区线索：北美、东南亚，涉及要点：费用、签证、医院、国际部、手术，含30%、5年、43.7%、2024年、2025年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim03_md_12",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim03.md",
+      "title": "medical_agent_dim03",
+      "category": "market",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia",
+        "middle_east"
+      ],
+      "keywords": [
+        "market",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "southeast_asia",
+        "middle_east",
+        "费用",
+        "签证",
+        "随访",
+        "医院"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2025年、24%、2035年、99%、70.5%。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：心血管/心胸，地区线索：北美、东南亚、中东，涉及要点：费用、签证、随访、医院，含2025年、24%、2035年、99%、70.5%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim04_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim04.md",
+      "title": "medical_agent_dim04",
+      "category": "market",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "market",
+        "north_america",
+        "southeast_asia"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2024年、2025年、2035年、8.4%、2034年。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，地区线索：北美、东南亚，含2024年、2025年、2035年、8.4%、2034年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim04_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim04.md",
+      "title": "medical_agent_dim04",
+      "category": "insurance",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "insurance",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "保险",
+        "预授权",
+        "签证",
+        "医院",
+        "国际部",
+        "手术"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。可参考的数值线索包括：2027年、8月、2025年、7月、2024年。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、保险、预授权、签证、医院、国际部、手术，含2027年、8月、2025年、7月、2024年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim04_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim04.md",
+      "title": "medical_agent_dim04",
+      "category": "insurance",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "insurance",
+        "north_america",
+        "保险",
+        "医院"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，地区线索：北美，涉及要点：保险、医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim05_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim05.md",
+      "title": "medical_agent_dim05",
+      "category": "travel",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "travel",
+        "north_america",
+        "费用",
+        "保险",
+        "签证",
+        "随访"
+      ],
+      "guidance": "作为来华行程、签证、住宿和陪同安排参考，按紧急程度调整。可参考的数值线索包括：97.2%、$56。",
+      "evidenceSummary": "该资料被抽象为来华就医行程与签证参考，地区线索：北美，涉及要点：费用、保险、签证、随访，含97.2%、$56等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim05_md_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim05.md",
+      "title": "medical_agent_dim05",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "southeast_asia"
+      ],
+      "keywords": [
+        "cost",
+        "southeast_asia",
+        "费用",
+        "医院",
+        "手术"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：57.7%、97.2%、25%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：东南亚，涉及要点：费用、医院、手术，含57.7%、97.2%、25%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim05_md_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim05.md",
+      "title": "medical_agent_dim05",
+      "category": "general",
+      "diseaseKeys": [
+        "lung_cancer",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "middle_east"
+      ],
+      "keywords": [
+        "general",
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "middle_east"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：15%、32%、23%、80%。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，适用病种线索：肺部肿瘤、心血管/心胸，地区线索：北美、中东，含15%、32%、23%、80%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim05_md_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim05.md",
+      "title": "medical_agent_dim05",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2025年、75%、2028年、15%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美，涉及要点：医院，含2025年、75%、2028年、15%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim05_md_5",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim05.md",
+      "title": "medical_agent_dim05",
+      "category": "medical_safety",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "medical_safety",
+        "north_america"
+      ],
+      "guidance": "作为合规与风险披露约束，缺资料时明确提示，不输出诊断承诺或疗效承诺。可参考的数值线索包括：2025年、31%、0.3%、92.1%。",
+      "evidenceSummary": "该资料被抽象为医学安全与合规边界参考，地区线索：北美，含2025年、31%、0.3%、92.1%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim05_md_6",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim05.md",
+      "title": "medical_agent_dim05",
+      "category": "service",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "service",
+        "north_america",
+        "翻译"
+      ],
+      "guidance": "作为服务包和跨境随访设计参考，避免营销夸大。可参考的数值线索包括：5.0%、43.6%、8.4%。",
+      "evidenceSummary": "该资料被抽象为跨境服务与随访安排参考，地区线索：北美，涉及要点：翻译，含5.0%、43.6%、8.4%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim05_md_7",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim05.md",
+      "title": "medical_agent_dim05",
+      "category": "general",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "lung_cancer",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，适用病种线索：肺部肿瘤，地区线索：北美；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim05_md_8",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim05.md",
+      "title": "medical_agent_dim05",
+      "category": "report_structure",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "report_structure",
+        "north_america",
+        "影像"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，地区线索：北美，涉及要点：影像；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim05_md_9",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim05.md",
+      "title": "medical_agent_dim05",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "middle_east"
+      ],
+      "keywords": [
+        "hospital",
+        "middle_east",
+        "费用",
+        "签证",
+        "翻译",
+        "随访",
+        "医院",
+        "专家"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：97.2%、31%、0.3%、5%、43.6%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：中东，涉及要点：费用、签证、翻译、随访、医院、专家，含97.2%、31%、0.3%、5%、43.6%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_dim05_md_10",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_dim05.md",
+      "title": "medical_agent_dim05",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美，涉及要点：医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_file_analysis_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_file_analysis.md",
+      "title": "medical_agent_file_analysis",
+      "category": "equipment",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "equipment",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "医院",
+        "质子",
+        "重离子",
+        "达芬奇",
+        "手术"
+      ],
+      "guidance": "作为设备和技术可及性参考，只在与当前病种相关时使用。可参考的数值线索包括：65%、5年、85%。",
+      "evidenceSummary": "该资料被抽象为设备和技术可及性参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、医院、质子、重离子、达芬奇、手术，含65%、5年、85%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_research_medical_agent_insight_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/research/medical_agent_insight.md",
+      "title": "medical_agent_insight",
+      "category": "market",
+      "diseaseKeys": [
+        "nasopharyngeal_cancer"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "market",
+        "nasopharyngeal_cancer",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "随访",
+        "医院",
+        "质子",
+        "重离子",
+        "手术"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：90%、50%、$50、$80、$488。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：鼻咽/头颈肿瘤，地区线索：北美、欧洲、东南亚、日韩、中东，涉及要点：费用、随访、医院、质子、重离子、手术，含90%、50%、$50、$80、$488等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_md_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医_报告生成提示词_完整版.md",
+      "title": "寰宇云医_报告生成提示词_完整版",
+      "category": "report_structure",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "japan_korea"
+      ],
+      "keywords": [
+        "report_structure",
+        "north_america",
+        "europe",
+        "japan_korea",
+        "费用",
+        "随访",
+        "医院",
+        "手术",
+        "放疗",
+        "化疗"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，地区线索：北美、欧洲、日韩，涉及要点：费用、随访、医院、手术、放疗、化疗；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_1",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "market",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "market",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "费用",
+        "保险",
+        "医院",
+        "质子",
+        "重离子",
+        "手术",
+        "放疗",
+        "化疗"
+      ],
+      "guidance": "作为宏观背景参考，除非用户需要市场解释，否则不进入核心医学结论。可参考的数值线索包括：2023年、67%、15%、30%、2024年。",
+      "evidenceSummary": "该资料被抽象为国际医疗市场背景参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管/心胸，地区线索：北美、欧洲、东南亚、日韩，涉及要点：费用、保险、医院、质子、重离子、手术、放疗、化疗，含2023年、67%、15%、30%、2024年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_2",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "医院",
+        "分期",
+        "手术",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：7%、70%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：医院、分期、手术、免疫，含7%、70%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_3",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "travel",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "travel",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "保险",
+        "签证",
+        "医院",
+        "专家",
+        "质子",
+        "手术",
+        "放疗",
+        "化疗",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为来华行程、签证、住宿和陪同安排参考，按紧急程度调整。可参考的数值线索包括：35%、42%、25%、1%、20%。",
+      "evidenceSummary": "该资料被抽象为来华就医行程与签证参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：费用、保险、签证、医院、专家、质子、手术、放疗，含35%、42%、25%、1%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_4",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "travel",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "travel",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "签证",
+        "邀请函",
+        "翻译",
+        "随访",
+        "医院",
+        "专家",
+        "质子",
+        "重离子",
+        "病理"
+      ],
+      "guidance": "作为来华行程、签证、住宿和陪同安排参考，按紧急程度调整。可参考的数值线索包括：2025年、3月、30天、2024年、9月。",
+      "evidenceSummary": "该资料被抽象为来华就医行程与签证参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、内分泌代谢，地区线索：北美、欧洲、东南亚，涉及要点：费用、签证、邀请函、翻译、随访、医院、专家、质子，含2025年、3月、30天、2024年、9月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_5",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "医院",
+        "专家",
+        "国际部",
+        "手术",
+        "靶向"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：42%、2025年、3月、72 小时、70%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤，地区线索：北美，涉及要点：费用、医院、专家、国际部、手术、靶向，含42%、2025年、3月、72 小时、70%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_6",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "cost",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "breast_cancer",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiovascular_tumor",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "翻译",
+        "医院"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：48 小时、30 天、3 天、2025 年、5年。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：乳腺肿瘤、肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管肿瘤、心血管/心胸，地区线索：北美，涉及要点：翻译、医院，含48 小时、30 天、3 天、2025 年、5年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_7",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "hospital",
+      "diseaseKeys": [
+        "breast_cancer",
+        "lung_cancer"
+      ],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "breast_cancer",
+        "lung_cancer",
+        "费用",
+        "医院",
+        "专家",
+        "达芬奇",
+        "手术",
+        "靶向"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：70%、35%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：乳腺肿瘤、肺部肿瘤，涉及要点：费用、医院、专家、达芬奇、手术、靶向，含70%、35%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_8",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "医院",
+        "质子"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：医院、质子；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_9",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "report_structure",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "report_structure",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "医院",
+        "质子"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。可参考的数值线索包括：35%、25%、20%。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、医院、质子，含35%、25%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_10",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "north_america",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，地区线索：北美，涉及要点：医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_11",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：1小时。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含1小时等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_12",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "费用"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：1%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：费用，含1%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_13",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "费用",
+        "翻译"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：50%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：费用、翻译，含50%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_14",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "cost",
+        "医院",
+        "分期"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，涉及要点：医院、分期；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_15",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "医院",
+        "专家",
+        "基因"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，涉及要点：医院、专家、基因；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_16",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "cost",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "随访",
+        "专家",
+        "质子",
+        "手术",
+        "放疗"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：$280,000、$350,000。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、随访、专家、质子、手术、放疗，含$280,000、$350,000等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_17",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "report_structure",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "report_structure"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。可参考的数值线索包括：24小时。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，含24小时等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_18",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "费用",
+        "医院"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美，涉及要点：费用、医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_19",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "hospital",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "hospital",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，涉及要点：医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_20",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "general"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：45%、35%、20%。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，含45%、35%、20%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_21",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_22",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "service",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "service",
+        "翻译"
+      ],
+      "guidance": "作为服务包和跨境随访设计参考，避免营销夸大。",
+      "evidenceSummary": "该资料被抽象为跨境服务与随访安排参考，涉及要点：翻译；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_23",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "report_structure",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "japan_korea"
+      ],
+      "keywords": [
+        "report_structure",
+        "north_america",
+        "japan_korea"
+      ],
+      "guidance": "作为报告结构和决策动线参考，按当前患者资料重组章节，不复制模板表述。",
+      "evidenceSummary": "该资料被抽象为报告结构与生成质量参考，地区线索：北美、日韩；生成报告时需按患者资料重新判断适用性。",
+      "weight": 5
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_24",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "north_america",
+        "费用",
+        "翻译",
+        "医院"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤，地区线索：北美，涉及要点：费用、翻译、医院；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_25",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：14天、7天。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含14天、7天等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "Kimi_Agent_4_Agent_docx_26",
+      "source": "Kimi_Agent_双版医疗导航网站-4/寰宇云医智能导航Agent产品设计方案.docx",
+      "title": "寰宇云医智能导航Agent产品设计方案",
+      "category": "general",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "general",
+        "north_america"
+      ],
+      "guidance": "作为背景资料参考，仅在与当前用户问题匹配时使用。可参考的数值线索包括：5%、80%、10%、85%。",
+      "evidenceSummary": "该资料被抽象为综合背景参考，地区线索：北美，含5%、80%、10%、85%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "china_medical_tourism_whitepaper_docx_1",
+      "source": "china_medical_tourism_whitepaper.docx",
+      "title": "china_medical_tourism_whitepaper",
+      "category": "cost",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe"
+      ],
+      "keywords": [
+        "cost",
+        "north_america",
+        "europe",
+        "费用",
+        "质子",
+        "重离子",
+        "基因"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：45%、50%、2021年、6月、9月。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，地区线索：北美、欧洲，涉及要点：费用、质子、重离子、基因，含45%、50%、2021年、6月、9月等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_docx_1",
+      "source": "《全球医院基础信息查询及各科室专家查询白皮书》.docx",
+      "title": "《全球医院基础信息查询及各科室专家查询白皮书》",
+      "category": "cost",
+      "diseaseKeys": [
+        "dental",
+        "lung_cancer",
+        "cardiology_cardiothoracic"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "cost",
+        "dental",
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "签证",
+        "邀请函",
+        "翻译",
+        "医院",
+        "专家",
+        "手术",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为费用拆分和波动因素参考，按当前病种、治疗强度和资料完整度生成区间。可参考的数值线索包括：2015年、11.1%、2周、90%、50%。",
+      "evidenceSummary": "该资料被抽象为费用拆分与区间估算参考，适用病种线索：牙科/口腔、肺部肿瘤、心血管/心胸，地区线索：北美、欧洲、东南亚，涉及要点：费用、签证、邀请函、翻译、医院、专家、手术、靶向，含2015年、11.1%、2周、90%、50%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_docx_2",
+      "source": "《全球医院基础信息查询及各科室专家查询白皮书》.docx",
+      "title": "《全球医院基础信息查询及各科室专家查询白皮书》",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic",
+        "neurosurgery",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "nasopharyngeal_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic",
+        "neurosurgery",
+        "premium_checkup",
+        "north_america",
+        "southeast_asia",
+        "费用",
+        "翻译",
+        "随访",
+        "医院",
+        "专家",
+        "国际部",
+        "质子",
+        "病理",
+        "影像"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：99.5%、2026年、90天。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤、鼻咽/头颈肿瘤、肝脏疾病/肿瘤、心血管/心胸、神经外科、高端体检，地区线索：北美、东南亚，涉及要点：费用、翻译、随访、医院、专家、国际部、质子、病理，含99.5%、2026年、90天等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_docx_3",
+      "source": "《全球医院基础信息查询及各科室专家查询白皮书》.docx",
+      "title": "《全球医院基础信息查询及各科室专家查询白皮书》",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "neurosurgery",
+        "spine_surgery"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "neurosurgery",
+        "spine_surgery",
+        "north_america",
+        "europe",
+        "费用",
+        "保险",
+        "翻译",
+        "随访",
+        "医院",
+        "专家",
+        "国际部",
+        "达芬奇",
+        "手术",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2026年、1710年、12周、70%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤、心血管/心胸、神经外科、脊柱外科，地区线索：北美、欧洲，涉及要点：费用、保险、翻译、随访、医院、专家、国际部、达芬奇，含2026年、1710年、12周、70%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_docx_4",
+      "source": "《全球医院基础信息查询及各科室专家查询白皮书》.docx",
+      "title": "《全球医院基础信息查询及各科室专家查询白皮书》",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "neurosurgery",
+        "spine_surgery",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "middle_east",
+        "australia_new_zealand"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "neurosurgery",
+        "spine_surgery",
+        "premium_checkup",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "middle_east",
+        "australia_new_zealand",
+        "费用",
+        "医院",
+        "专家",
+        "质子",
+        "达芬奇",
+        "手术",
+        "体检"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2002年、24小时、2026年、2029年、50%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤、心血管/心胸、神经外科、脊柱外科、高端体检，地区线索：北美、欧洲、东南亚、中东、澳新，涉及要点：费用、医院、专家、质子、达芬奇、手术、体检，含2002年、24小时、2026年、2029年、50%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_docx_5",
+      "source": "《全球医院基础信息查询及各科室专家查询白皮书》.docx",
+      "title": "《全球医院基础信息查询及各科室专家查询白皮书》",
+      "category": "hospital",
+      "diseaseKeys": [
+        "dental",
+        "lung_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "southeast_asia",
+        "japan_korea",
+        "middle_east"
+      ],
+      "keywords": [
+        "hospital",
+        "dental",
+        "lung_cancer",
+        "liver_cancer",
+        "cardiology_cardiothoracic",
+        "premium_checkup",
+        "southeast_asia",
+        "japan_korea",
+        "middle_east",
+        "费用",
+        "医院",
+        "专家",
+        "基因",
+        "手术",
+        "靶向",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：24小时。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：牙科/口腔、肺部肿瘤、肝脏疾病/肿瘤、心血管/心胸、高端体检，地区线索：东南亚、日韩、中东，涉及要点：费用、医院、专家、基因、手术、靶向、免疫，含24小时等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_docx_6",
+      "source": "《全球医院基础信息查询及各科室专家查询白皮书》.docx",
+      "title": "《全球医院基础信息查询及各科室专家查询白皮书》",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "endocrinology_metabolism",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "europe",
+        "southeast_asia",
+        "japan_korea"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "endocrinology_metabolism",
+        "premium_checkup",
+        "europe",
+        "southeast_asia",
+        "japan_korea",
+        "保险",
+        "签证",
+        "随访",
+        "医院",
+        "专家",
+        "手术",
+        "免疫",
+        "体检"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2013年、30%、1921年、2024年、14年。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤、心血管/心胸、内分泌代谢、高端体检，地区线索：欧洲、东南亚、日韩，涉及要点：保险、签证、随访、医院、专家、手术、免疫、体检，含2013年、30%、1921年、2024年、14年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_docx_7",
+      "source": "《全球医院基础信息查询及各科室专家查询白皮书》.docx",
+      "title": "《全球医院基础信息查询及各科室专家查询白皮书》",
+      "category": "insurance",
+      "diseaseKeys": [
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "insurance",
+        "endocrinology_metabolism",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "直付",
+        "签证",
+        "医院",
+        "专家",
+        "手术",
+        "免疫"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。可参考的数值线索包括：2025年、2005年、1921年、1950年、1980年。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，适用病种线索：内分泌代谢，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、直付、签证、医院、专家、手术、免疫，含2025年、2005年、1921年、1950年、1980年等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_docx_8",
+      "source": "《全球医院基础信息查询及各科室专家查询白皮书》.docx",
+      "title": "《全球医院基础信息查询及各科室专家查询白皮书》",
+      "category": "hospital",
+      "diseaseKeys": [
+        "cardiology_cardiothoracic",
+        "premium_checkup"
+      ],
+      "regionKeys": [
+        "north_america",
+        "europe"
+      ],
+      "keywords": [
+        "hospital",
+        "cardiology_cardiothoracic",
+        "premium_checkup",
+        "north_america",
+        "europe",
+        "医院",
+        "专家",
+        "影像",
+        "手术",
+        "免疫"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。可参考的数值线索包括：2023年、2024年、10月、2010年、99.5%。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：心血管/心胸、高端体检，地区线索：北美、欧洲，涉及要点：医院、专家、影像、手术、免疫，含2023年、2024年、10月、2010年、99.5%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_docx_9",
+      "source": "《全球医院基础信息查询及各科室专家查询白皮书》.docx",
+      "title": "《全球医院基础信息查询及各科室专家查询白皮书》",
+      "category": "hospital",
+      "diseaseKeys": [
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "endocrinology_metabolism"
+      ],
+      "regionKeys": [
+        "north_america"
+      ],
+      "keywords": [
+        "hospital",
+        "lung_cancer",
+        "cardiology_cardiothoracic",
+        "endocrinology_metabolism",
+        "north_america",
+        "费用",
+        "医院",
+        "专家",
+        "基因",
+        "靶向",
+        "甲状腺"
+      ],
+      "guidance": "作为医院/科室匹配方向参考，推荐理由必须结合当前病情和资料状态。",
+      "evidenceSummary": "该资料被抽象为医院、科室与专家匹配参考，适用病种线索：肺部肿瘤、心血管/心胸、内分泌代谢，地区线索：北美，涉及要点：费用、医院、专家、基因、靶向、甲状腺；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_md_1",
+      "source": "国际医疗保险中国就医白皮书.md",
+      "title": "国际医疗保险中国就医白皮书",
+      "category": "insurance",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "insurance",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "预授权",
+        "直付",
+        "医院",
+        "国际部"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。可参考的数值线索包括：48小时、10%、42%。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、预授权、直付、医院、国际部，含48小时、10%、42%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_md_2",
+      "source": "国际医疗保险中国就医白皮书.md",
+      "title": "国际医疗保险中国就医白皮书",
+      "category": "insurance",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "insurance",
+        "north_america",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "预授权",
+        "直付",
+        "医院"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。可参考的数值线索包括：76%。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，地区线索：北美、东南亚，涉及要点：费用、保险、预授权、直付、医院，含76%等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_md_3",
+      "source": "国际医疗保险中国就医白皮书.md",
+      "title": "国际医疗保险中国就医白皮书",
+      "category": "insurance",
+      "diseaseKeys": [],
+      "regionKeys": [
+        "north_america",
+        "europe",
+        "southeast_asia"
+      ],
+      "keywords": [
+        "insurance",
+        "north_america",
+        "europe",
+        "southeast_asia",
+        "费用",
+        "保险",
+        "直付",
+        "签证",
+        "医院",
+        "专家",
+        "手术"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，地区线索：北美、欧洲、东南亚，涉及要点：费用、保险、直付、签证、医院、专家、手术；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    },
+    {
+      "id": "_md_4",
+      "source": "国际医疗保险中国就医白皮书.md",
+      "title": "国际医疗保险中国就医白皮书",
+      "category": "insurance",
+      "diseaseKeys": [],
+      "regionKeys": [],
+      "keywords": [
+        "insurance",
+        "保险"
+      ],
+      "guidance": "作为保险预授权、直付和理赔材料提醒参考，避免承诺一定报销。可参考的数值线索包括：24小时。",
+      "evidenceSummary": "该资料被抽象为保险预授权与理赔材料参考，涉及要点：保险，含24小时等数值线索；生成报告时需按患者资料重新判断适用性。",
+      "weight": 3
+    }
+  ]
+}

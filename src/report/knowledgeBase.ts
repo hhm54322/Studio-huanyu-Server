@@ -1,3 +1,5 @@
+import { dentalAdvantages, dentalImplantPriceItems, dentalPartner, dentalVeneerPriceItems } from './dentalKnowledge.js'
+
 export type KnowledgeDisease = {
   label: string
   treatment: string
@@ -201,25 +203,22 @@ export const diseases: Record<string, KnowledgeDisease> = {
   },
   dental: {
     label: '牙科',
-    treatment: '口腔综合评估 + 种植/正畸/修复方案 + 分阶段治疗计划',
-    direction: '口腔影像 -> 牙周与咬合评估 -> 种植/正畸/修复方案 -> 费用和周期确认',
-    duration: '预计在华停留5-14天；种植和正畸通常需要分阶段复诊',
-    chinaFee: '$1,000 - $12,000',
-    score: 76,
-    advantages: ['种植和修复费用相对可控', '城市选择多', '可与其他行程合并'],
+    treatment: '鼎植口腔专科评估 + 保牙/种植/贴面修复方案 + 数字化模拟设计 + 分阶段复诊计划',
+    direction: '口腔全景片/CBCT -> 牙周与咬合评估 -> 保牙或种植适应证判断 -> 鼎植种植/贴面方案设计 -> 费用和复诊周期确认',
+    duration: '初诊评估和方案确认通常可在5-10天内完成；完整种植修复通常需一期手术、3-6个月骨结合、二期修复和后续复查。',
+    chinaFee: '按项目确认；半口即刻负重¥98,000起（约$13,600起），高端贴面¥2,680起（约$400起）',
+    score: 82,
+    advantages: dentalAdvantages.map((item) => item.value),
     hospitals: [
-      { city: '北京', name: '北京大学口腔医院', reason: '口腔专科全国领先，复杂口腔问题处理能力强' },
-      { city: '上海', name: '上海交通大学医学院附属第九人民医院', reason: '口腔颌面与修复能力强' },
-      { city: '广州', name: '中山大学附属口腔医院', reason: '华南口腔专科实力突出' },
+      { city: dentalPartner.city, name: dentalPartner.name, reason: dentalPartner.recommendationReason },
     ],
     breakdown: [
-      { item: '口腔检查与影像', cost: '$100-$500' },
-      { item: '种植/修复/正畸初期治疗', cost: '$800-$8,000' },
-      { item: '材料与技工费用', cost: '$500-$3,000' },
-      { item: '翻译与预约协调', cost: '$300-$1,000' },
-      { item: '住宿与生活', cost: '$800-$2,000' },
+      ...dentalImplantPriceItems.map((item) => ({ item: item.item, cost: item.cost })),
+      ...dentalVeneerPriceItems.slice(0, 1).map((item) => ({ item: item.item, cost: item.cost })),
+      { item: '翻译、预约与就医协调', cost: '$300-$1,200' },
+      { item: '住宿与生活', cost: '$800-$2,600' },
     ],
-    keywords: ['牙', '口腔', '种植', '正畸', 'dental'],
+    keywords: ['牙', '口腔', '种植', '正畸', 'dental', '贴面', '缺牙', '鼎植'],
   },
   cardiology_cardiothoracic: {
     label: '心内科与心胸外科',
