@@ -13,6 +13,7 @@ import {
 } from './dentalKnowledge.js'
 import { defaultDisease, diseases, packages, regions, type KnowledgeDisease, type KnowledgeRegion } from './knowledgeBase.js'
 import type { ReportLayoutSection } from './layoutTypes.js'
+import { collectMedicalFactBundle, summarizeMedicalFactBundle, type MedicalDocumentFact, type MedicalFactBundle } from './medicalFactExtractor.js'
 import { sanitizeReportText } from './textSanitizer.js'
 import { generatedReportSchema, type GeneratedReport } from './types.js'
 
@@ -61,6 +62,7 @@ type ReportContext = {
   personalization: CasePersonalization
   selectedRegionItems: ReturnType<typeof getRegionItems>
   documentKnowledge: DocumentKnowledgeBlock[]
+  medicalFacts: MedicalFactBundle
 }
 
 type SymptomSignalGroup = {
@@ -116,19 +118,40 @@ const unique = (items: string[]) => Array.from(new Set(items.filter(Boolean)))
 
 const getParsedFileEvidence = (input: ReportSubmissionInput) => input.parsedFiles
   .filter((file) => file.summary.trim() || file.text.trim())
-  .map((file) => `${file.originalName}：${file.summary || file.text.slice(0, 900)}`)
+  .map((file) => {
+    const medicalFacts = file.metadata?.medicalFacts as MedicalDocumentFact | undefined
+    const displayEvidence = medicalFacts?.sourceEvidence?.length
+      ? getDisplayClinicalEvidenceItems(medicalFacts.sourceEvidence, 3, 180)
+      : []
+    const structured = medicalFacts && displayEvidence.length
+      ? `结构化识别：${medicalFacts.reportType || '医学资料'}；${medicalFacts.primaryDate || ''}；${displayEvidence.join('；')}`
+      : ''
+    const fallback = structured ? '' : truncateForPrompt(file.summary || file.text, 260)
+    return `${file.originalName}：${[structured, fallback].filter(Boolean).join('；')}`
+  })
 
 const getSubmittedComplaint = (input: ReportSubmissionInput) => {
   const complaint = input.basicInfo.chiefComplaint.trim()
-  const parsedEvidence = getParsedFileEvidence(input)
-  if (!parsedEvidence.length) return complaint
-  return [complaint, `上传资料摘要：${parsedEvidence.join('；')}`].filter(Boolean).join('\n')
+  const parsedEvidence = getParsedFileEvidence(input).slice(0, 5)
+  const medicalFacts = summarizeMedicalFactBundle(collectMedicalFactBundle(input.parsedFiles), 6)
+  if (!parsedEvidence.length && !medicalFacts.length) return complaint
+  return [complaint, `上传资料摘要：${[...medicalFacts, ...parsedEvidence].join('；')}`].filter(Boolean).join('\n')
 }
 
 const getComplaintForReport = (input: ReportSubmissionInput, fallbackLabel?: string) => {
   const complaint = getSubmittedComplaint(input)
   if (complaint) return complaint
   return `用户暂未填写症状及病史，本次仅基于“${fallbackLabel || input.basicInfo.visitPurpose || '就医目的'}”进行初步可行性预审。`
+}
+
+const diseaseSignalLabelMap: Record<string, string> = {
+  breast_cancer: '乳腺癌',
+  lung_cancer: '肺癌',
+  liver_cancer: '肝癌',
+  nasopharyngeal_cancer: '鼻咽癌',
+  neurosurgery: '神经外科',
+  dental: '牙科',
+  cardiology_cardiothoracic: '心内科与心胸外科',
 }
 
 const parseCostValues = (cost: string, pattern: RegExp, divisor = 1) => {
@@ -197,6 +220,297 @@ const normalizeReportCosts = (report: GeneratedReport): GeneratedReport => {
       ...report.plan,
       totalCost,
     },
+  }
+}
+
+const getFreeMetastasisSites = (context: ReportContext) => unique(
+  context.medicalFacts.documents
+    .flatMap((document) => document.metastasisSignals)
+    .filter((signal) => signal.status === 'present' || signal.status === 'suspected')
+    .map((signal) => signal.site),
+)
+
+const cleanEvidenceSnippet = (text: string, maxLength = 220) => {
+  const normalized = String(text || '')
+    .replace(/^医学摘要\s*[:：]\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\.\.\.$/, '')
+    .trim()
+  if (!normalized) return ''
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}...` : normalized
+}
+
+const isDisplayableClinicalEvidence = (text: string) => {
+  const value = String(text || '').trim()
+  const lower = value.toLowerCase()
+  if (!value) return false
+  if ([
+    '医学摘要',
+    '报告可见内容',
+    '主要结论',
+    'patient name',
+    'patient id',
+    'accession no',
+    'no mr',
+    'kementerian',
+    '出生日期',
+    'dob',
+    'study date',
+    'portaca',
+  ].some((token) => lower.includes(token.toLowerCase()))) return false
+  if (/^患者\s*[A-Za-z]/.test(value)) return false
+  return true
+}
+
+const getDisplayClinicalEvidenceItems = (items: string[], limit = 3, maxLength = 180) => unique(items
+  .map((item) => cleanEvidenceSnippet(item, maxLength))
+  .filter((item) => item && isDisplayableClinicalEvidence(item)))
+  .slice(0, limit)
+
+const dateValue = (date: string) => {
+  const normalized = date.length === 7 ? `${date}-01` : date
+  const value = Date.parse(normalized)
+  return Number.isFinite(value) ? value : 0
+}
+
+const earliestClinicalDateValue = Date.parse('2000-01-01')
+
+const isLikelyClinicalReportDate = (date: string) => {
+  const value = dateValue(date)
+  return Boolean(value && value >= earliestClinicalDateValue)
+}
+
+const uniqueSortedDates = (dates: string[]) => unique(dates
+  .filter((date) => date && date !== '日期待确认' && isLikelyClinicalReportDate(date)))
+  .sort((left, right) => dateValue(left) - dateValue(right))
+
+const isMetastaticBreastFreeCase = (context: ReportContext) => {
+  const factText = [
+    context.medicalFacts.summary,
+    ...context.medicalFacts.evidenceHighlights,
+    ...context.medicalFacts.documents.flatMap((document) => [
+      document.reportType,
+      ...document.diagnoses,
+      ...document.findings.map((finding) => finding.text),
+      ...document.indicators.map((indicator) => `${indicator.name} ${indicator.value}`),
+    ]),
+  ].join(' ')
+
+  return (
+    (context.diseaseKey === 'breast_cancer' || context.medicalFacts.diseaseSignals.includes('breast_cancer') || includesAny(factText, ['乳腺', 'breast', 'Luminal', 'carcinoma mamma', 'mammae'])) &&
+    getFreeMetastasisSites(context).length > 0
+  )
+}
+
+const getNeedForReport = (context: ReportContext) => {
+  if (isMetastaticBreastFreeCase(context)) {
+    return context.input.basicInfo.chiefComplaint.trim() || `本次围绕“${context.disease.label}”进行来华就医可行性预审。`
+  }
+  return getComplaintForReport(context.input, context.disease.label)
+}
+
+const getFreeFactIndicator = (context: ReportContext, names: string[]) => {
+  const normalizedNames = names.map((name) => normalizeText(name))
+  return context.medicalFacts.documents
+    .flatMap((document) => document.indicators)
+    .find((indicator) => normalizedNames.includes(normalizeText(indicator.name)))
+}
+
+const formatFreeIndicator = (context: ReportContext, names: string[]) => {
+  const indicator = getFreeFactIndicator(context, names)
+  return indicator ? `${indicator.name} ${indicator.value}` : ''
+}
+
+const buildMetastaticBreastFreeRecordSummary = (context: ReportContext) => {
+  const sites = getFreeMetastasisSites(context)
+  const allDates = uniqueSortedDates([
+    ...context.medicalFacts.timeline.map((item) => item.date),
+    ...context.medicalFacts.documents.flatMap((document) => [document.primaryDate, ...document.dates]),
+  ])
+  const latestDate = allDates[allDates.length - 1] || '最新资料'
+  const indicators = [
+    formatFreeIndicator(context, ['ER']),
+    formatFreeIndicator(context, ['PR']),
+    formatFreeIndicator(context, ['HER2']),
+    formatFreeIndicator(context, ['Ki-67', 'Ki67']),
+    formatFreeIndicator(context, ['分子分型']),
+  ].filter(Boolean)
+  const signals = context.medicalFacts.documents
+    .flatMap((document) => document.metastasisSignals)
+    .filter((signal) => signal.status === 'present' || signal.status === 'suspected')
+  const evidenceBySite = sites.map((site) => {
+    const signal = signals.find((item) => item.site === site)
+    const evidence = signal ? getDisplayClinicalEvidenceItems([signal.evidence], 1, 180)[0] : ''
+    return signal && evidence ? `${site}：${evidence}` : ''
+  }).filter(Boolean)
+
+  return {
+    summary: `上传资料提示乳腺癌术后复查场景中已出现${sites.join('、')}等复发/转移或可疑转移线索；免费报告只能做方向预审，正式结论需肿瘤内科结合PET/CT原片、病理切片和既往治疗记录确认。`,
+    items: [
+      allDates.length >= 2 ? `时间线：资料从${allDates[0]}延续到${latestDate}，重点已从初诊/术后资料转向PET/CT再分期和转移风险评估。` : '',
+      indicators.length ? `病理/IHC：${indicators.join('；')}，需用于判断HR+/HER2-方向、内分泌治疗基础和治疗强度。` : '',
+      evidenceBySite.length ? `影像证据：${evidenceBySite.join('；')}` : '',
+      '当前优先确认：PET/CT多部位病灶是否构成转移性复发、转移灶受体状态是否变化、是否存在肝功能受损或骨折/脊髓压迫等需要先处理的风险。',
+      '下一步重点：提交PET/CT DICOM、完整报告、手术病理、放化疗和用药清单，评估CDK4/6+内分泌治疗、再活检/分子检测、骨保护和局部放疗是否适用。',
+    ].filter(Boolean),
+  }
+}
+
+const buildMetastaticBreastFreeEnhancement = (context: ReportContext) => {
+  const sites = getFreeMetastasisSites(context)
+  const hasBone = sites.includes('骨骼')
+  const hasLiver = sites.includes('肝脏')
+
+  return {
+    treatment: [
+      '根据已解析资料，患者属于右乳癌术后及放化疗后复查场景，PET/CT已出现肝脏、骨骼、淋巴结等复发/远处转移信号。',
+      '下一步不应按单纯术后局部复查处理，而应由乳腺肿瘤内科/MDT复核原始影像、病理切片、受体状态和既往治疗后，确认是否进入HR+/HER2-转移性乳腺癌系统治疗路径。',
+      '若确认进入转移性阶段，现实目标通常是长期系统控制：尽快压低肿瘤活性、保护骨骼和肝功能、控制疼痛，并把用药监测和回国续治安排连续起来。',
+      '若确认ER阳性、HER2阴性且无内脏危象，常见讨论方向是CDK4/6抑制剂联合内分泌治疗，如Palbociclib、Ribociclib或Abemaciclib联合芳香化酶抑制剂/Fulvestrant；若肝功能风险高、进展快或既往治疗耐药，则需由医生评估化疗、再活检、分子检测、骨保护、局部放疗或临床研究。',
+    ].join(' '),
+    plan: {
+      direction: [
+        '远程提交PET/CT DICOM原片、病理/IHC、2025年手术病理和既往治疗记录',
+        '抵华后完成病理受体状态复核、PET/CT原片复核、肝脏增强影像、头颅增强MRI和骨病灶风险评估',
+        '讨论肝脏/淋巴结等可及病灶再活检，复核ER/PR/HER2/Ki-67并按需做PIK3CA、ESR1、BRCA/PALB2或NGS/ctDNA',
+        'MDT确定CDK4/6+内分泌、化疗、骨保护、局部放疗/止痛或临床研究的优先顺序',
+      ].join(' -> '),
+      duration: '远程预审约3-7天；来华集中评估通常7-14天；若启动首周期系统治疗、骨转移处理或局部放疗，预计在华停留2-6周，后续按6-12周复查节奏随访。',
+      totalCost: '$11,100 - $43,000',
+      breakdown: [
+        { item: '远程病历整理、医学翻译与专家预审', cost: '$300-$1,000' },
+        { item: '病理/IHC复核与受体状态确认', cost: '$800-$2,500' },
+        { item: 'PET/CT原片复核及补充分期检查', cost: '$1,500-$5,000' },
+        { item: '可及病灶再活检与分子检测（如需）', cost: '$1,500-$6,000' },
+        { item: 'CDK4/6抑制剂 + 内分泌治疗首月评估', cost: '$2,500-$9,000' },
+        { item: '骨保护、止痛和支持治疗', cost: hasBone ? '$500-$2,500' : '$300-$1,200' },
+        { item: '局部放疗、短期住院或介入/支持处理（如需）', cost: '$2,500-$12,000' },
+        { item: '翻译陪诊、就医协调、住宿与生活', cost: '$1,500-$5,000' },
+      ],
+    },
+    concerns: [
+      {
+        concern: 'PET/CT提示多部位高代谢病灶，需尽快复核',
+        solution: `建议携带PET/CT DICOM原始影像、完整报告和既往治疗记录，由乳腺肿瘤MDT判断${sites.join('、')}等病灶是否符合转移性复发表现，并评估是否需要再活检。`,
+      },
+      {
+        concern: '系统治疗选择取决于受体状态和既往用药',
+        solution: '需复核ER、PR、HER2、Ki-67和Luminal分型；若转移灶可及，建议讨论再活检，确认HER2-low、PIK3CA、ESR1、BRCA/PALB2等是否影响用药排序。',
+      },
+      ...(hasBone ? [{
+        concern: '骨转移涉及承重骨或脊柱时存在骨折/脊髓压迫风险',
+        solution: '需评估疼痛、活动能力、脊柱/骨盆/髋臼稳定性，讨论地舒单抗或唑来膦酸、补钙/维D、局部放疗、止痛和骨科/放疗科会诊。',
+      }] : []),
+      ...(hasLiver ? [{
+        concern: '肝转移可能影响系统治疗紧迫性和药物耐受',
+        solution: '建议补充肝功能、凝血、肿瘤标志物和肝脏增强MRI/CT；若出现黄疸、明显乏力、腹胀或肝功能异常，应先在当地处理风险。',
+      }] : []),
+      {
+        concern: '脑部PET阴性不能完全排除脑转移',
+        solution: 'PET/CT报告已提示脑转移更适合MRI评估；如有头痛、呕吐、视物异常、抽搐或肢体无力，应优先做头颅增强MRI。',
+      },
+      {
+        concern: '费用不应按单一手术包估算',
+        solution: '当前更接近转移性乳腺癌复核和系统治疗场景，预算应按检查复核、再活检/分子检测、首月药物、骨保护/局部处理、服务和生活费用分层确认。',
+      },
+    ],
+    highlights: [
+      '病理提示右乳浸润性癌NST，Luminal B-like，ER强阳性，PR阴性，HER2阴性/1+，Ki-67约70%。',
+      'PET/CT提示肝脏、骨骼、胸小肌下/纵隔/肺门淋巴结等多部位高代谢病灶，需按复发/转移方向快速复核。',
+      'HR+/HER2-场景下，CDK4/6抑制剂联合内分泌治疗是常见讨论方向，但需结合既往治疗、肝功能、血象和是否存在内脏危象确认。',
+      '骨转移管理需同步纳入地舒单抗/唑来膦酸、补钙/维D、止痛、局部放疗和骨折风险评估。',
+      '如果可及病灶适合再活检，可帮助确认受体状态变化、HER2-low可能性和精准治疗/临床研究机会。',
+      '本次来华价值不只是找医院，而是把病理、影像、既往治疗、药物费用和跨境随访整理成可执行的MDT方案。',
+    ],
+  }
+}
+
+const isSpecialtyFreeCase = (context: ReportContext) => (
+  !context.personalization.mismatch &&
+  context.medicalFacts.hasActionableFacts &&
+  ['lung_cancer', 'liver_cancer', 'nasopharyngeal_cancer', 'neurosurgery'].includes(context.diseaseKey)
+)
+
+const buildSpecialtyFreeEnhancement = (context: ReportContext) => {
+  if (!isSpecialtyFreeCase(context)) return null
+
+  const evidence = getDisplayClinicalEvidenceItems(context.medicalFacts.evidenceHighlights, 4, 160)
+  const indicator = (names: string[]) => names.map((name) => formatFreeIndicator(context, [name])).filter(Boolean).join('；')
+  const profiles: Record<string, {
+    treatment: string
+    planDirection: string
+    concerns: GeneratedReport['concerns']
+    highlights: string[]
+  }> = {
+    lung_cancer: {
+      treatment: `上传资料提示肺癌/肺部肿瘤方向，当前核心不是直接决定手术或用药，而是先把病理类型、TNM分期、EGFR/ALK/PD-L1等分子免疫指标和远处转移筛查放在一起复核。${indicator(['EGFR', 'ALK', 'PD-L1']) ? `已识别关键指标：${indicator(['EGFR', 'ALK', 'PD-L1'])}。` : ''}若确认存在可靶向突变，治疗排序会明显不同；若分期提示可切除或局部晚期，则需胸外科、肿瘤内科和放疗科MDT判断手术、放疗、靶向、免疫或化疗的先后。`,
+      planDirection: '病理切片/蜡块复核 -> 胸部CT/PET-CT和头颅增强MRI完善分期 -> EGFR/ALK/PD-L1/NGS确认 -> 胸部肿瘤MDT排序手术、靶向、免疫、化疗或放疗 -> 固定可测量病灶并6-8周评估疗效',
+      concerns: [
+        { concern: '治疗路径取决于病理、分期和分子结果', solution: '需同时提交病理报告/切片、胸部CT DICOM、脑MRI或PET/CT、EGFR/ALK/PD-L1/NGS结果，避免只按肺部肿块大小决定治疗。' },
+        { concern: '脑转移或呼吸急症需优先排除', solution: '如有头痛抽搐、肢体无力、咯血、气促、血氧下降或胸痛，应先在当地急诊/呼吸肿瘤科处理。' },
+      ],
+      highlights: [
+        '肺癌资料应优先回答：是否已有病理、TNM分期是否完整、是否存在可靶向突变或免疫治疗指征。',
+        'EGFR/ALK/PD-L1结果会直接影响靶向、免疫、化疗和局部治疗的排序。',
+        '来华价值在于把胸外科、肿瘤内科、放疗科和影像病理复核放入同一个MDT决策框架。',
+      ],
+    },
+    liver_cancer: {
+      treatment: `上传资料提示肝癌/肝脏肿瘤方向，当前要同时判断肿瘤负荷、肝功能储备、门静脉侵犯和肝外转移，不能只按肿瘤大小决定手术或介入。${indicator(['AFP']) ? `已识别关键指标：${indicator(['AFP'])}。` : ''}若肝功能和肿瘤位置允许，可讨论手术或消融；若存在门静脉癌栓、肿瘤负荷较高或不可切除，则需评估TACE/HAIC、放疗、靶免系统治疗和肝功能保护。`,
+      planDirection: '肝脏增强MRI/CT原片复核 -> AFP趋势、肝功能/凝血和乙肝/丙肝病毒学评估 -> 判断可切除/可消融/可介入 -> 肝胆外科+介入+肿瘤内科MDT -> 分阶段治疗和肝功能监测',
+      concerns: [
+        { concern: '肝癌方案高度依赖肝功能储备', solution: '需补齐胆红素、白蛋白、凝血功能、血小板、Child-Pugh/ALBI和乙肝/丙肝资料，再判断手术、介入或系统治疗承受性。' },
+        { concern: '门静脉癌栓或肝功能失代偿会改变优先级', solution: '如有黄疸、腹水、呕血黑便、发热或意识改变，应先在当地处理出血、感染或肝功能风险。' },
+      ],
+      highlights: [
+        '肝癌资料应优先回答：是否符合影像/病理诊断、肝功能能否承受治疗、是否存在门静脉癌栓或肝外转移。',
+        '手术、消融、TACE/HAIC、放疗和靶免系统治疗需要由肝胆外科、介入科和肿瘤内科联合排序。',
+        '费用和停留周期应按检查复核、住院介入/手术、系统药物和后续复查分阶段测算。',
+      ],
+    },
+    nasopharyngeal_cancer: {
+      treatment: '上传资料提示鼻咽癌/头颈肿瘤方向，当前重点是复核病理、头颈MRI分期、EBV DNA和远处转移筛查，再判断诱导化疗、同步放化疗、复发后再程放疗或系统治疗路径。',
+      planDirection: '鼻咽镜病理复核 -> 头颈MRI和EBV DNA完善分期 -> PET/CT或胸腹影像排除远处转移 -> 头颈肿瘤放疗科MDT -> 精准放疗/化疗/系统治疗排序',
+      concerns: [
+        { concern: '放疗前支持会影响疗程完成度', solution: '需评估口腔牙齿、营养、听力、吞咽和颈部功能，减少治疗中断风险。' },
+        { concern: '颅神经或出血症状需先处理', solution: '如有鼻出血不止、视物异常、严重头痛、吞咽困难或颅神经症状，应先当地耳鼻喉/急诊处理。' },
+      ],
+      highlights: [
+        '鼻咽癌资料应优先回答：病理是否明确、头颈MRI分期是否完整、EBV DNA和远处转移筛查是否齐全。',
+        '中国方案价值在于头颈肿瘤放疗经验、精准放疗计划和全疗程支持管理。',
+      ],
+    },
+    neurosurgery: {
+      treatment: `上传资料提示神经外科/中枢神经系统肿瘤方向，当前核心是明确病灶位置、神经功能风险、病理/分子分型和是否适合最大安全切除。${indicator(['WHO分级', 'IDH状态', 'MGMT甲基化', 'Ki-67']) ? `已识别关键指标：${indicator(['WHO分级', 'IDH状态', 'MGMT甲基化', 'Ki-67'])}。` : ''}若为高级别胶质瘤或疑似恶性肿瘤，下一步通常不是单纯观察，而是复核MRI原片、病理和分子指标后，排序手术/放疗/替莫唑胺/康复随访。`,
+      planDirection: '头颅/脊髓MRI DICOM复核 -> 神经功能和癫痫风险评估 -> 病理/IDH/MGMT/Ki-67复核 -> 神经外科+放疗科+肿瘤内科MDT -> 最大安全切除或辅助放化疗及康复随访',
+      concerns: [
+        { concern: '神经功能恶化需优先处理', solution: '如出现进行性头痛、喷射性呕吐、抽搐、意识改变、肢体无力、语言障碍或大小便异常，应先当地神经外科急诊处理。' },
+        { concern: '手术决策不能只看肿瘤大小', solution: '需结合功能区、传导束、占位效应、病理分子指标和术后辅助治疗窗口综合判断。' },
+      ],
+      highlights: [
+        '神经肿瘤资料应优先回答：病灶是否位于功能区、是否需要手术取样/切除、WHO/IDH/MGMT是否足够指导辅助治疗。',
+        '高级别胶质瘤场景需尽快衔接放疗、替莫唑胺和康复随访，避免术后辅助治疗窗口被拖延。',
+        '来华价值在于神经外科、影像、病理、放疗、肿瘤内科和康复团队联合排序。',
+      ],
+    },
+  }
+
+  const profile = profiles[context.diseaseKey]
+  if (!profile) return null
+
+  return {
+    treatment: profile.treatment,
+    plan: {
+      direction: profile.planDirection,
+      duration: context.disease.duration,
+      totalCost: context.disease.chinaFee,
+      breakdown: context.disease.breakdown,
+    },
+    concerns: [
+      ...profile.concerns,
+      ...(evidence.length ? [{ concern: '上传资料已形成核心线索', solution: `已识别：${evidence.join('；')}。正式方案仍需医生复核原件和DICOM影像。` }] : []),
+    ],
+    highlights: profile.highlights,
   }
 }
 
@@ -575,10 +889,36 @@ const getInferableDiseaseKey = (text: string, matchedSignals: SymptomSignalMatch
 
 const getOtherSignalMatches = (selectedKey: string, selectedSignalKeys: string[], text: string, matchedSignals: SymptomSignalMatch[]) => {
   const compatibleSignals = compatibleSecondarySignals[selectedKey] || []
+  const normalized = normalizeText(text)
+  const isCancerWithMetastasisContext =
+    ['breast_cancer', 'lung_cancer', 'liver_cancer', 'nasopharyngeal_cancer'].includes(selectedKey) &&
+    includesAny(text, ['转移', 'metastasis', 'metastases', '高代谢', 'PET/CT', 'petct', 'pet/ct'])
+  const hasExplicitEndocrineDisease = includesAny(text, [
+    '糖尿病',
+    '血糖',
+    '糖化血红蛋白',
+    '甲状腺',
+    '肥胖',
+    '血脂',
+    '尿酸',
+    '痛风',
+    '多囊',
+    '胰岛素',
+    '代谢综合征',
+    '内分泌科',
+  ])
+  const metastaticSiteSignalKeys = new Set(['liver_cancer', 'lung_cancer', 'orthopedics', 'respiratory'])
 
   return matchedSignals.filter((item) => {
     if (selectedSignalKeys.includes(item.key) || item.diseaseKey === selectedKey) return false
     if (compatibleSignals.includes(item.key)) return false
+    if (isCancerWithMetastasisContext && metastaticSiteSignalKeys.has(item.key)) return false
+    if (isCancerWithMetastasisContext && item.diseaseKey && metastaticSiteSignalKeys.has(item.diseaseKey)) return false
+    if (
+      isCancerWithMetastasisContext &&
+      item.key === 'endocrinology_metabolism' &&
+      (!hasExplicitEndocrineDisease || normalized.includes(normalizeText('内分泌治疗')) || normalized.includes(normalizeText('雌激素受体')) || normalized.includes(normalizeText('孕激素受体')))
+    ) return false
 
     if (selectedKey === 'other' && item.diseaseKey) {
       const group = symptomSignalGroups[item.key]
@@ -593,9 +933,11 @@ const getDiseaseMatch = (input: ReportSubmissionInput): DiseaseMatch => {
   const direct = diseases[input.basicInfo.visitPurpose]
   const requestedKey = direct ? input.basicInfo.visitPurpose : 'other'
   const requestedDisease = direct || defaultDisease
+  const medicalFacts = collectMedicalFactBundle(input.parsedFiles)
+  const factDiseaseKey = medicalFacts.diseaseSignals.find((key) => diseases[key])
   const complaintText = getSubmittedComplaint(input)
   const matchedSignals = getMatchedSignals(complaintText)
-  const inferredDiseaseKey = getInferableDiseaseKey(complaintText, matchedSignals)
+  const inferredDiseaseKey = factDiseaseKey || getInferableDiseaseKey(complaintText, matchedSignals)
 
   if (requestedKey === 'other' && inferredDiseaseKey) {
     const inferredDisease = diseases[inferredDiseaseKey]
@@ -616,9 +958,12 @@ const getDiseaseMatch = (input: ReportSubmissionInput): DiseaseMatch => {
     const selectedSignalKeys = getSelectedSignalKeys(input.basicInfo.visitPurpose)
     const selectedSignals = selectedSignalKeys.flatMap((key) => symptomSignalGroups[key]?.keywords || [])
     const selectedEvidence = getPositiveKeywordHits(complaintText, selectedSignals.length ? selectedSignals : direct.keywords)
-    const matchesSelected = selectedEvidence.length > 0
+    const matchesSelected = selectedEvidence.length > 0 || factDiseaseKey === input.basicInfo.visitPurpose
     const otherSignalMatches = getOtherSignalMatches(input.basicInfo.visitPurpose, selectedSignalKeys, complaintText, matchedSignals)
-    const otherSignals = getMatchedSignalLabels(otherSignalMatches)
+    const otherSignals = unique([
+      ...getMatchedSignalLabels(otherSignalMatches),
+      factDiseaseKey && factDiseaseKey !== input.basicInfo.visitPurpose ? (diseaseSignalLabelMap[factDiseaseKey] || diseases[factDiseaseKey]?.label) : '',
+    ])
     const shouldCheckMismatch = selectedDepartmentRequiresSymptomMatch.has(input.basicInfo.visitPurpose)
 
     if (shouldCheckMismatch && !matchesSelected && otherSignals.length > 0) {
@@ -864,7 +1209,10 @@ const estimateScore = (disease: typeof defaultDisease, input: ReportSubmissionIn
 }
 
 const buildFreeLayoutSections = (report: GeneratedReport, context: ReportContext): ReportLayoutSection[] => {
-  const { personalization } = context
+  const { personalization, medicalFacts } = context
+  const metastaticBreastRecordSummary = isMetastaticBreastFreeCase(context)
+    ? buildMetastaticBreastFreeRecordSummary(context)
+    : null
   const countryRows = report.countries.map((country) => ({
     cells: [
       `${country.flag} ${country.name}`,
@@ -888,8 +1236,61 @@ const buildFreeLayoutSections = (report: GeneratedReport, context: ReportContext
     ...personalization.requiredMaterials.slice(0, 3).map((item) => `补充${item}后，可进一步完善费用区间、治疗先后顺序和出行安排。`),
     `专业版会围绕“${personalization.decisionPoints[0] || '下一步关键诊疗问题'}”进行医生复核前的结构化预审。`,
   ]
+  const medicalFactTimeline = medicalFacts.timeline.slice(0, 8).map((event) => ({
+    time: event.date,
+    title: `${event.reportType} · ${event.title}`,
+    description: getDisplayClinicalEvidenceItems([event.description], 1, 220)[0] || '该节点已识别到医学资料变化，需医生结合原件复核。',
+    items: getDisplayClinicalEvidenceItems(event.items, 4, 160).length
+      ? getDisplayClinicalEvidenceItems(event.items, 4, 160)
+      : [`来源：${event.fileName}`],
+  }))
+  const medicalFactCards = medicalFacts.documents.length
+    ? medicalFacts.documents.slice(0, 6).map((document) => ({
+      title: document.reportType,
+      subtitle: document.primaryDate || document.fileName,
+      value: `置信度 ${Math.round(document.confidence * 100)}%`,
+      description: getDisplayClinicalEvidenceItems(document.sourceEvidence, 2, 180).join('；') || '未识别到明确医学事实，需人工复核原件。',
+      detail: `来源：${document.fileName}`,
+      tone: document.confidence >= 0.65 ? 'highlight' : 'warning',
+    }))
+    : []
+  const recordSection: ReportLayoutSection = {
+    key: 'records',
+    label: '上传资料解读',
+    labelEn: 'Uploaded Record Review',
+    icon: 'FileSearch',
+    summary: medicalFacts.hasActionableFacts
+      ? metastaticBreastRecordSummary
+        ? '已基于上传病理、影像和PET/CT资料识别出乳腺癌术后复发/转移方向的核心线索。'
+        : '系统已从上传资料中提取日期、报告类型、关键指标和病情线索。'
+      : '上传资料暂未识别出足够医学事实，当前报告主要基于表单信息。',
+    blocks: [
+      {
+        type: 'notice',
+        title: '核心资料结论',
+        description: medicalFacts.hasActionableFacts
+          ? metastaticBreastRecordSummary?.summary || medicalFacts.summary
+          : '未能从上传资料中提取足够可用医学事实，建议上传清晰图片/PDF原文，或在表单中补充病理、影像和既往治疗摘要。',
+        items: medicalFacts.qualityFlags.length
+          ? medicalFacts.qualityFlags
+          : metastaticBreastRecordSummary?.items || getDisplayClinicalEvidenceItems(medicalFacts.evidenceHighlights, 5, 220),
+        tone: medicalFacts.hasActionableFacts ? 'highlight' : 'warning',
+      },
+      ...(medicalFactTimeline.length ? [{
+        type: 'timeline' as const,
+        title: '病情时间线',
+        timeline: medicalFactTimeline,
+      }] : []),
+      ...(medicalFactCards.length ? [{
+        type: 'cards' as const,
+        title: '资料分项识别',
+        cards: medicalFactCards,
+      }] : []),
+    ],
+  }
 
   return [
+    recordSection,
     {
       key: 'cost',
       label: '全球该疾病费用对比',
@@ -1052,13 +1453,14 @@ const withFreeLayoutSections = (report: GeneratedReport, context: ReportContext)
 })
 
 const buildRuleReport = (context: ReportContext): GeneratedReport => {
-  const { disease, diseaseKey, input, personalization, selectedRegionItems, submissionNo, dateLabel } = context
+  const { disease, diseaseKey, input, personalization, selectedRegionItems, submissionNo, dateLabel, medicalFacts } = context
   const countries = [chinaCountry(disease, personalization), ...selectedRegionItems.map((item) => personalizeRegionItem(item, context))]
   const score = estimateScore(disease, input, personalization)
   const selectedNames = selectedRegionItems.map((item) => item.name).join('、') || '所选目的地'
   const firstDecision = personalization.decisionPoints[0] || '明确下一步诊疗方向'
   const firstMaterial = personalization.requiredMaterials.slice(0, 3).join('、')
   const parsedEvidence = getParsedFileEvidence(input)
+  const medicalFactHighlights = summarizeMedicalFactBundle(medicalFacts, 6)
   const direction = [
     ...personalization.planPriorities,
     disease.direction,
@@ -1073,6 +1475,13 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
     : personalization.weakMatch
       ? `用户选择了“${personalization.requestedDepartment}”，但主诉中缺少典型相关信息；需结合${firstMaterial || '检查资料'}确认是否适合该科室。`
       : `${disease.label}方向匹配度约${score}/100，但需结合${firstMaterial || '补充资料'}确认`
+  const metastaticBreastEnhancement = !personalization.mismatch && isMetastaticBreastFreeCase(context)
+    ? buildMetastaticBreastFreeEnhancement(context)
+    : null
+  const specialtyEnhancement = !metastaticBreastEnhancement ? buildSpecialtyFreeEnhancement(context) : null
+  const baseDuration = diseaseKey === 'dental' && personalization.complaint.includes('种植')
+    ? '短期可在华完成检查、止痛、补牙/根管/拔牙和种植评估；完整种植修复通常需数月或多次往返'
+    : disease.duration
 
   return finalizeReportCosts({
     id: submissionNo,
@@ -1081,8 +1490,8 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
     disease: personalization.mismatch ? '综合分诊评估' : personalization.reportDiseaseLabel,
     treatment: personalization.mismatch
       ? `${personalization.mismatchReason} 本次报告先按综合分诊处理，重点识别可能方向、危险信号和下一步资料清单。`
-      : `${disease.treatment}（围绕用户主诉先判断：${firstDecision}）`,
-    need: getComplaintForReport(input, disease.label),
+      : metastaticBreastEnhancement?.treatment || specialtyEnhancement?.treatment || `${disease.treatment}（围绕用户主诉先判断：${firstDecision}）`,
+    need: getNeedForReport(context),
     countries,
     score,
     advantages: [
@@ -1094,6 +1503,8 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
       { label: '费用与效率', value: `需按实际检查和治疗强度分层估算；中国方案相较${selectedNames}可优先做专家预审和路径确认` },
     ],
     concerns: [
+      ...(metastaticBreastEnhancement?.concerns || []),
+      ...(specialtyEnhancement?.concerns || []),
       ...(personalization.mismatch
         ? [{ concern: '所选科室与症状不一致', solution: `建议先确认主要问题是否属于${personalization.possibleDirections.join('、') || '其他专科'}，不要直接按“${personalization.requestedDepartment}”安排治疗。` }]
         : []),
@@ -1107,6 +1518,9 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
       ...(parsedEvidence.length
         ? [{ concern: '上传资料已用于预审', solution: `已参考${parsedEvidence.slice(0, 2).join('；').slice(0, 180)}，但原始报告仍需医生复核。` }]
         : []),
+      ...(input.uploadedFiles.length && !medicalFacts.hasActionableFacts
+        ? [{ concern: '上传资料识别不足', solution: '已收到上传文件，但暂未识别出足够医学事实；当前报告不能据此判断病理、影像或治疗阶段，建议重新上传清晰图片/PDF原文或补充文字摘要。' }]
+        : []),
       { concern: '急性风险排除', solution: personalization.urgencyNote },
       { concern: '语言沟通', solution: '建议配置医学翻译和就医管家，减少跨科室沟通误差' },
       { concern: '治疗连续性', solution: `出发前需围绕“${firstDecision}”确认分阶段治疗、回国维护和远程复诊方式` },
@@ -1114,16 +1528,17 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
     ],
     hospitals: disease.hospitals,
     plan: {
-      direction,
-      duration: diseaseKey === 'dental' && personalization.complaint.includes('种植')
-        ? '短期可在华完成检查、止痛、补牙/根管/拔牙和种植评估；完整种植修复通常需数月或多次往返'
-        : disease.duration,
-      totalCost: disease.chinaFee,
-      breakdown: disease.breakdown,
+      direction: metastaticBreastEnhancement?.plan.direction || specialtyEnhancement?.plan.direction || direction,
+      duration: metastaticBreastEnhancement?.plan.duration || specialtyEnhancement?.plan.duration || baseDuration,
+      totalCost: metastaticBreastEnhancement?.plan.totalCost || specialtyEnhancement?.plan.totalCost || disease.chinaFee,
+      breakdown: metastaticBreastEnhancement?.plan.breakdown || specialtyEnhancement?.plan.breakdown || disease.breakdown,
     },
     packages,
     highlights: [
-      ...(parsedEvidence.length ? [`已读取上传资料摘要：${parsedEvidence[0].slice(0, 120)}`] : []),
+      ...(metastaticBreastEnhancement?.highlights || []),
+      ...(specialtyEnhancement?.highlights || []),
+      ...(!metastaticBreastEnhancement && !specialtyEnhancement && medicalFactHighlights.length ? medicalFactHighlights.map((item) => `资料识别：${cleanEvidenceSnippet(item, 120)}`) : []),
+      ...(!metastaticBreastEnhancement && !specialtyEnhancement && parsedEvidence.length ? [`已读取上传资料摘要：${cleanEvidenceSnippet(parsedEvidence[0], 120)}`] : []),
       ...disease.advantages,
       `围绕“${firstDecision}”做专家人工复核`,
       `优先核对${firstMaterial || '关键检查资料'}后再出行`,
@@ -1155,8 +1570,36 @@ const compactPatientInputForPrompt = (input: ReportSubmissionInput) => ({
   parsedFiles: input.parsedFiles.map((file) => ({
     originalName: file.originalName,
     status: file.status,
-    summary: truncateForPrompt(file.summary, 500),
+    summary: truncateForPrompt(file.summary, 220),
+    medicalFacts: compactDocumentFactForPrompt(file.metadata?.medicalFacts as MedicalDocumentFact | undefined),
   })),
+})
+
+const compactDocumentFactForPrompt = (document?: MedicalDocumentFact) => document ? ({
+  reportType: document.reportType,
+  primaryDate: document.primaryDate,
+  diagnoses: document.diagnoses.slice(0, 3),
+  indicators: document.indicators.slice(0, 6),
+  metastasisSignals: document.metastasisSignals.slice(0, 6),
+  evidence: document.sourceEvidence.slice(0, 4),
+  confidence: document.confidence,
+}) : undefined
+
+const compactMedicalFactsForPrompt = (bundle: MedicalFactBundle) => ({
+  summary: bundle.summary,
+  diseaseSignals: bundle.diseaseSignals,
+  qualityFlags: bundle.qualityFlags,
+  timeline: bundle.timeline.slice(0, 10),
+  documents: bundle.documents.map((document) => ({
+    fileName: document.fileName,
+    reportType: document.reportType,
+    primaryDate: document.primaryDate,
+    diagnoses: document.diagnoses.slice(0, 4),
+    indicators: document.indicators.slice(0, 8),
+    metastasisSignals: document.metastasisSignals,
+    evidence: document.sourceEvidence.slice(0, 6),
+    confidence: document.confidence,
+  })).slice(0, 8),
 })
 
 const compactDocumentKnowledgeForPrompt = (blocks: DocumentKnowledgeBlock[]) => blocks
@@ -1223,7 +1666,7 @@ const compactRuleReportForPrompt = (report: GeneratedReport) => ({
 })
 
 const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport) => {
-  const { input, disease, diseaseKey, personalization, selectedRegionItems, submissionNo, dateLabel, documentKnowledge } = context
+  const { input, disease, diseaseKey, personalization, selectedRegionItems, submissionNo, dateLabel, documentKnowledge, medicalFacts } = context
   return [
     {
       role: 'system',
@@ -1246,6 +1689,7 @@ const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport) => {
         task: '生成高度个性化的来华就医可行性预审报告 JSON',
         generationPrinciples: [
           '用户主诉必须是报告主轴：treatment、advantages、concerns、plan.direction、plan.breakdown、highlights 都要回应用户实际填写的症状/检查/诉求。',
+          '如果 structuredMedicalFacts 中有可用医学事实，必须优先把其中的日期、报告类型、诊断、指标、影像/病理发现作为报告依据；如果没有可用事实，必须说明上传资料识别不足。',
           'baselineRuleReport 只能作为字段结构参考，不能照抄其中的通用文案。',
           '国家对比必须结合当前科室和用户诉求。如果知识库中的地区费用明显偏向大病种，不适用于当前科室，应改写成“按项目评估”的保守表达。',
           '费用明细要围绕可能发生的真实项目拆分；不确定时给分层区间，避免单一、看似精确但无依据的数字。',
@@ -1259,6 +1703,7 @@ const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport) => {
         ].filter(Boolean),
         personalization,
         specialtyRules: personalization.specialtyRules,
+        structuredMedicalFacts: compactMedicalFactsForPrompt(medicalFacts),
         documentKnowledge: compactDocumentKnowledgeForPrompt(documentKnowledge),
         documentKnowledgeUsageRules: [
           '这些知识块来自用户提供资料整理后的专业要点，只能作为生成依据和质量约束。',
@@ -1378,7 +1823,7 @@ const callLlm = async (context: ReportContext, ruleReport: GeneratedReport) => {
     stream: true,
   })
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -1386,17 +1831,22 @@ const callLlm = async (context: ReportContext, ruleReport: GeneratedReport) => {
         'Content-Type': 'application/json',
       },
       body,
-      signal: AbortSignal.timeout(config.openaiTimeoutMs),
+      signal: AbortSignal.timeout(config.openaiReportTimeoutMs),
     })
 
     if (!response.ok) {
       const responseBody = await response.text()
-      if (attempt < 2 && [408, 429, 500, 502, 503, 504].includes(response.status)) continue
+      if (attempt === 0 && [408, 429, 500, 502, 503, 504].includes(response.status)) continue
       throw new Error(`LLM request failed: ${response.status} ${responseBody.slice(0, 500)}`)
     }
 
-    const content = await readChatCompletionContent(response)
-    return generatedReportSchema.parse(JSON.parse(extractJson(content)))
+    try {
+      const content = await readChatCompletionContent(response)
+      return generatedReportSchema.parse(JSON.parse(extractJson(content)))
+    } catch (error) {
+      if (attempt === 0) continue
+      throw error
+    }
   }
 
   return null
@@ -1405,6 +1855,86 @@ const callLlm = async (context: ReportContext, ruleReport: GeneratedReport) => {
 const reportContainsAny = (report: GeneratedReport, terms: string[]) => {
   const text = JSON.stringify(report)
   return terms.some((term) => text.includes(term))
+}
+
+const hasDentalTemplateLeak = (reportText: string, hasDentalFacts: boolean) => {
+  if (hasDentalFacts) return false
+
+  const dentalTemplateTerms = ['口腔CBCT', '深龋', '根管治疗', '保牙', '种植牙']
+  if (includesAny(reportText, dentalTemplateTerms)) return true
+
+  const mentionsDental = includesAny(reportText, ['牙科', '口腔'])
+  if (!mentionsDental) return false
+
+  const legitimateOncologyDentalSafety = includesAny(reportText, [
+    '牙科风险评估',
+    '口腔风险评估',
+    '地舒单抗',
+    '唑来膦酸',
+    '双膦酸盐',
+    '骨保护',
+    '颌骨坏死',
+  ])
+
+  return !legitimateOncologyDentalSafety
+}
+
+const isLlmReportAlignedWithStructuredFacts = (report: GeneratedReport, context: ReportContext) => {
+  const reportText = JSON.stringify(report)
+
+  if (context.input.uploadedFiles.length && !context.medicalFacts.hasActionableFacts) {
+    const claimsUploadFacts = includesAny(reportText, ['上传资料可识别', '上传资料提示', '已识别上传资料', '已从上传资料', '基于上传资料'])
+    const acknowledgesInsufficientRecognition = includesAny(reportText, ['识别不足', '未识别', '不能据此', '无法辨认', '资料不足', '未提取到足够'])
+    if (claimsUploadFacts && !acknowledgesInsufficientRecognition) return false
+    if (context.diseaseKey === 'other' && includesAny(reportText, ['乳腺癌', '牙科', '口腔CBCT', '深龋', '肝转移', '骨转移', '淋巴结转移'])) return false
+  }
+
+  if (!context.medicalFacts.hasActionableFacts) return true
+
+  const factText = [
+    context.medicalFacts.summary,
+    ...context.medicalFacts.evidenceHighlights,
+    ...context.medicalFacts.documents.flatMap((document) => [
+      document.reportType,
+      ...document.diagnoses,
+      ...document.findings.map((finding) => finding.text),
+      ...document.indicators.map((indicator) => `${indicator.name} ${indicator.value}`),
+    ]),
+  ].join(' ')
+  const hasBreastFacts = context.medicalFacts.diseaseSignals.includes('breast_cancer') || includesAny(factText, ['乳腺', 'breast', 'Luminal', 'carcinoma mamma', 'mammae'])
+  const hasDentalFacts = context.medicalFacts.diseaseSignals.includes('dental') || includesAny(factText, ['牙', '口腔', 'CBCT', '龋', '根管'])
+  const hasLungFacts = context.medicalFacts.diseaseSignals.includes('lung_cancer') || includesAny(factText, ['肺癌', '肺腺癌', 'lung', 'EGFR', 'ALK', 'PD-L1'])
+  const hasLiverFacts = context.medicalFacts.diseaseSignals.includes('liver_cancer') || includesAny(factText, ['肝癌', 'HCC', 'AFP', '肝细胞癌'])
+  const hasNeuroFacts = context.medicalFacts.diseaseSignals.includes('neurosurgery') || includesAny(factText, ['胶质', '脑肿瘤', 'WHO', 'IDH', 'MGMT'])
+  const leaksDental = hasDentalTemplateLeak(reportText, hasDentalFacts)
+  const leaksBreast = includesAny(reportText, ['乳腺癌', '乳腺', 'Luminal', 'CDK4/6']) && !hasBreastFacts
+  if (leaksDental || leaksBreast) return false
+
+  if (hasBreastFacts) {
+    const keepsBreastCancer = includesAny(reportText, ['乳腺癌', '乳腺', 'breast'])
+    const keepsEvidence = includesAny(reportText, ['肝脏', '骨骼', '淋巴结', '肺部', '转移', 'PET', 'ER', 'PR', 'HER2', 'Ki-67', '系统治疗'])
+    return keepsBreastCancer && keepsEvidence && !leaksDental
+  }
+
+  if (hasDentalFacts) {
+    const keepsDental = includesAny(reportText, ['牙', '口腔', 'CBCT', '龋', '根管', '保牙', '种植'])
+    const leaksCancer = includesAny(reportText, ['乳腺癌', '肝转移', '骨转移', '淋巴结转移', '化疗', '放疗', '靶向治疗']) && !hasBreastFacts
+    return keepsDental && !leaksCancer
+  }
+
+  if (hasLungFacts) {
+    return includesAny(reportText, ['肺癌', '肺腺癌', '肺部', 'EGFR', 'ALK', 'PD-L1', '靶向', '分期'])
+  }
+
+  if (hasLiverFacts) {
+    return includesAny(reportText, ['肝癌', '肝细胞癌', 'HCC', 'AFP', '肝功能', '介入', '消融', '系统治疗'])
+  }
+
+  if (hasNeuroFacts) {
+    return includesAny(reportText, ['神经外科', '胶质', '脑', 'WHO', 'IDH', 'MGMT', '放疗', '替莫唑胺'])
+  }
+
+  return true
 }
 
 const enforceReportGuardrails = (report: GeneratedReport, context: ReportContext, ruleReport: GeneratedReport) => {
@@ -1437,17 +1967,22 @@ const enforceReportGuardrails = (report: GeneratedReport, context: ReportContext
     return ruleReport
   }
 
+  if (!isLlmReportAlignedWithStructuredFacts(report, context)) {
+    return ruleReport
+  }
+
   return finalizeReportCosts({
     ...report,
     id: context.submissionNo,
     date: context.dateLabel,
-    need: getComplaintForReport(context.input, context.disease.label),
+    need: getNeedForReport(context),
     generatedBy: 'llm' as const,
   }, context)
 }
 
 export const generateReport = async (input: ReportSubmissionInput, submissionNo: string): Promise<GeneratedReport> => {
   const match = getDiseaseMatch(input)
+  const medicalFacts = collectMedicalFactBundle(input.parsedFiles)
   const context: ReportContext = {
     submissionNo,
     dateLabel: getDateLabel(),
@@ -1457,6 +1992,7 @@ export const generateReport = async (input: ReportSubmissionInput, submissionNo:
     personalization: buildPersonalization(input, match),
     selectedRegionItems: getRegionItems(input.selectedRegions),
     documentKnowledge: getKnowledgeForFreeReport(input, match.key),
+    medicalFacts,
   }
   const ruleReport = buildRuleReport(context)
 

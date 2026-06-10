@@ -90,8 +90,14 @@ const parseMultipartSubmission = async (request: FastifyRequest) => {
 
   return professionalReportSubmissionSchema.parse({
     ...rawPayload,
-    uploadedFiles,
-    parsedFiles,
+    uploadedFiles: [
+      ...(Array.isArray(rawPayload.uploadedFiles) ? rawPayload.uploadedFiles : []),
+      ...uploadedFiles,
+    ],
+    parsedFiles: [
+      ...(Array.isArray(rawPayload.parsedFiles) ? rawPayload.parsedFiles : []),
+      ...parsedFiles,
+    ],
   })
 }
 

@@ -65,6 +65,8 @@ export const registerReportSubmissionRoutes = async (app: FastifyInstance) => {
         createdAt: created.created_at,
         basicInfo: input.basicInfo,
         selectedRegions: input.selectedRegions,
+        uploadedFiles: input.uploadedFiles,
+        parsedFiles: input.parsedFiles,
         report,
       })
     } catch (error) {
@@ -122,6 +124,8 @@ export const registerReportSubmissionRoutes = async (app: FastifyInstance) => {
         chiefComplaint: row.chief_complaint,
       },
       selectedRegions: row.selected_regions,
+      uploadedFiles: row.uploaded_files,
+      parsedFiles: row.parsed_files,
       report: row.report_result,
     })
   })

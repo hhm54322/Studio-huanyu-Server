@@ -70,6 +70,14 @@ export const professionalReportSubmissionSchema = z.object({
   }),
   uploadedFiles: z.array(professionalUploadedFileSchema).max(20).default([]),
   parsedFiles: z.array(professionalParsedFileSchema).max(20).default([]),
+}).superRefine((value, ctx) => {
+  if (value.uploadedFiles.length || value.parsedFiles.length) return
+
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    path: ['uploadedFiles'],
+    message: 'Professional report requires at least one uploaded medical record file.',
+  })
 })
 
 export type ProfessionalReportSubmissionInput = z.infer<typeof professionalReportSubmissionSchema>

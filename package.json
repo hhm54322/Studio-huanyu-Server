@@ -9,6 +9,9 @@
     "build": "tsc -p tsconfig.json",
     "knowledge:build": "tsx src/scripts/buildDocumentKnowledge.ts",
     "db:migrate": "tsx src/db/migrate.ts",
+    "reports:check-ocr": "tsx src/scripts/checkMedicalOcr.ts",
+    "reports:verify-records": "tsx src/scripts/verifyMedicalRecordReportQuality.ts",
+    "reports:preview-real-upload": "tsx src/scripts/generateRealUploadReportPreview.ts",
     "submissions:list": "tsx src/cli/submissions.ts list",
     "submissions:get": "tsx src/cli/submissions.ts get",
     "submissions:export": "tsx src/cli/submissions.ts export"

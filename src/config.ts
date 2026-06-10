@@ -12,6 +12,10 @@ export const config = {
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   openaiBaseUrl: (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, ''),
   openaiModel: process.env.OPENAI_MODEL || 'gpt-5.5',
+  openaiVisionModel: process.env.OPENAI_VISION_MODEL || process.env.OPENAI_MODEL || 'gpt-5.5',
   openaiTimeoutMs: Number(process.env.OPENAI_TIMEOUT_MS || 180000),
+  openaiReportTimeoutMs: Number(process.env.OPENAI_REPORT_TIMEOUT_MS || process.env.OPENAI_TIMEOUT_MS || 180000),
+  openaiVisionTimeoutMs: Number(process.env.OPENAI_VISION_TIMEOUT_MS || process.env.OPENAI_TIMEOUT_MS || 180000),
+  ocrProvider: (process.env.OCR_PROVIDER || 'auto').toLowerCase(),
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
 }
