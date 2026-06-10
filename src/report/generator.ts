@@ -1,4 +1,3 @@
-import { config } from '../config.js'
 import type { ReportSubmissionInput } from '../validators/reportSubmission.js'
 import { getKnowledgeForFreeReport, type DocumentKnowledgeBlock } from './documentKnowledge.js'
 import {
@@ -14,8 +13,16 @@ import {
 import { defaultDisease, diseases, packages, regions, type KnowledgeDisease, type KnowledgeRegion } from './knowledgeBase.js'
 import type { ReportLayoutSection } from './layoutTypes.js'
 import { collectMedicalFactBundle, summarizeMedicalFactBundle, type MedicalDocumentFact, type MedicalFactBundle } from './medicalFactExtractor.js'
+import { requestMedicalChatCompletion, type MedicalLlmMessage } from './medicalLlmProvider.js'
 import { sanitizeReportText } from './textSanitizer.js'
 import { generatedReportSchema, type GeneratedReport } from './types.js'
+
+type FreeReportPatch = Partial<Pick<
+  GeneratedReport,
+  'disease' | 'treatment' | 'advantages' | 'concerns' | 'highlights'
+> & {
+  plan?: Partial<Pick<GeneratedReport['plan'], 'direction' | 'duration'>>
+}>
 
 type DiseaseMatch = {
   key: string
@@ -132,8 +139,11 @@ const getParsedFileEvidence = (input: ReportSubmissionInput) => input.parsedFile
 
 const getSubmittedComplaint = (input: ReportSubmissionInput) => {
   const complaint = input.basicInfo.chiefComplaint.trim()
+  if (!input.uploadedFiles.length && !input.parsedFiles.length) return complaint
+
   const parsedEvidence = getParsedFileEvidence(input).slice(0, 5)
-  const medicalFacts = summarizeMedicalFactBundle(collectMedicalFactBundle(input.parsedFiles), 6)
+  const factBundle = collectMedicalFactBundle(input.parsedFiles)
+  const medicalFacts = factBundle.hasActionableFacts ? summarizeMedicalFactBundle(factBundle, 6) : []
   if (!parsedEvidence.length && !medicalFacts.length) return complaint
   return [complaint, `上传资料摘要：${[...medicalFacts, ...parsedEvidence].join('；')}`].filter(Boolean).join('\n')
 }
@@ -1290,7 +1300,7 @@ const buildFreeLayoutSections = (report: GeneratedReport, context: ReportContext
   }
 
   return [
-    recordSection,
+    ...(context.input.uploadedFiles.length || medicalFacts.hasActionableFacts ? [recordSection] : []),
     {
       key: 'cost',
       label: '全球该疾病费用对比',
@@ -1665,7 +1675,7 @@ const compactRuleReportForPrompt = (report: GeneratedReport) => ({
   generatedBy: report.generatedBy,
 })
 
-const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport) => {
+const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport): MedicalLlmMessage[] => {
   const { input, disease, diseaseKey, personalization, selectedRegionItems, submissionNo, dateLabel, documentKnowledge, medicalFacts } = context
   return [
     {
@@ -1753,6 +1763,93 @@ const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport) => {
   ]
 }
 
+const buildPatchPrompt = (context: ReportContext, ruleReport: GeneratedReport): MedicalLlmMessage[] => {
+  const { input, disease, diseaseKey, personalization, medicalFacts, documentKnowledge } = context
+
+  return [
+    {
+      role: 'system',
+      content: [
+        '你是寰宇云医简易预审报告的医学内容增强助手。',
+        '系统已经有一份完整规则基线报告；你只需要输出小 JSON patch，不要输出完整报告。',
+        '只基于用户填写的基础信息、主诉、科室方向和给定知识摘要增强医学表达。',
+        '不得编造检查数值、上传报告内容、确定诊断、医生姓名、疗效承诺或具体处方。',
+        '简易报告没有上传医疗报告时，不得出现“上传资料提示、已读取上传、从报告可见”等表达。',
+        '输出必须是严格 JSON，不要 Markdown，不要解释。',
+      ].join('\n'),
+    },
+    {
+      role: 'user',
+      content: JSON.stringify({
+        task: '生成简易报告医学增强 JSON patch',
+        allowedPatchFields: [
+          'disease',
+          'treatment',
+          'advantages',
+          'concerns',
+          'highlights',
+          'plan.direction',
+          'plan.duration',
+        ],
+        outputSchema: {
+          disease: '可选，简短方向名称，不超过16个汉字',
+          treatment: '可选，120-260字，回应用户主诉并保持医学审慎',
+          advantages: '可选，2-4项，每项 {label,value}',
+          concerns: '可选，3-6项，每项 {concern,solution}',
+          highlights: '可选，3-6条简短要点',
+          plan: {
+            direction: '可选，检查/复核/转诊/管理路径',
+            duration: '可选，在华停留或远程预审周期，需保守表达',
+          },
+        },
+        patientInput: {
+          locale: input.locale,
+          basicInfo: {
+            ...input.basicInfo,
+            chiefComplaint: truncateForPrompt(input.basicInfo.chiefComplaint, 700),
+          },
+          selectedRegions: input.selectedRegions,
+          hasUploadedMedicalRecords: input.uploadedFiles.length > 0,
+        },
+        personalization,
+        matchedKnowledge: {
+          diseaseKey,
+          disease: {
+            label: disease.label,
+            treatment: disease.treatment,
+            direction: disease.direction,
+            duration: disease.duration,
+            advantages: disease.advantages.slice(0, 5),
+          },
+          documentKnowledge: compactDocumentKnowledgeForPrompt(documentKnowledge).slice(0, 3),
+          structuredMedicalFacts: medicalFacts.hasActionableFacts
+            ? compactMedicalFactsForPrompt(medicalFacts)
+            : null,
+        },
+        baselineRuleReport: {
+          disease: ruleReport.disease,
+          treatment: ruleReport.treatment,
+          need: ruleReport.need,
+          advantages: ruleReport.advantages,
+          concerns: ruleReport.concerns,
+          plan: {
+            direction: ruleReport.plan.direction,
+            duration: ruleReport.plan.duration,
+          },
+          highlights: ruleReport.highlights,
+        },
+        qualityRules: [
+          '必须回应 chiefComplaint 中至少两个具体信息点。',
+          '没有上传医疗报告时，只能写“基于表单信息/用户自填信息”。',
+          '不得把科室方向写成已确诊诊断。',
+          '费用、医院、套餐字段已有规则基线，本 patch 不要改。',
+          diseaseKey === 'dental' ? `牙科方向只允许围绕${dentalPartner.name}和牙科主诉表达，不要新增其他口腔医院。` : '',
+        ].filter(Boolean),
+      }),
+    },
+  ]
+}
+
 const extractJson = (content: string) => {
   const trimmed = content.trim()
   if (trimmed.startsWith('{')) return trimmed
@@ -1760,89 +1857,23 @@ const extractJson = (content: string) => {
   return match ? match[0] : trimmed
 }
 
-const readChatCompletionContent = async (response: Response) => {
-  const contentType = response.headers.get('content-type') || ''
-
-  if (contentType.includes('application/json')) {
-    const json = await response.json() as {
-      choices?: Array<{ message?: { content?: string } }>
-    }
-    const content = json.choices?.[0]?.message?.content
-    if (!content) throw new Error('LLM response did not include content')
-    return content
-  }
-
-  if (!response.body) throw new Error('LLM response did not include a readable body')
-
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let content = ''
-
-  for (;;) {
-    const { done, value } = await reader.read()
-    buffer += decoder.decode(value || new Uint8Array(), { stream: !done })
-    const lines = buffer.split(/\r?\n/)
-    buffer = lines.pop() || ''
-
-    for (const rawLine of lines) {
-      const line = rawLine.trim()
-      if (!line || !line.startsWith('data:')) continue
-      const data = line.slice(5).trim()
-      if (!data || data === '[DONE]') continue
-
-      try {
-        const chunk = JSON.parse(data) as {
-          choices?: Array<{
-            delta?: { content?: string }
-            message?: { content?: string }
-          }>
-        }
-        content += chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content || ''
-      } catch {
-        // Ignore compatible gateway keepalive frames.
-      }
-    }
-
-    if (done) break
-  }
-
-  if (!content.trim()) throw new Error('LLM stream did not include content')
-  return content
-}
-
-const callLlm = async (context: ReportContext, ruleReport: GeneratedReport) => {
-  if (!config.openaiApiKey) return null
-
-  const body = JSON.stringify({
-    model: config.openaiModel,
-    messages: buildPrompt(context, ruleReport),
-    temperature: 0.35,
-    reasoning_effort: 'low',
-    response_format: { type: 'json_object' },
-    stream: true,
-  })
-
+const callLlmPatch = async (context: ReportContext, ruleReport: GeneratedReport): Promise<FreeReportPatch | null> => {
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body,
-      signal: AbortSignal.timeout(config.openaiReportTimeoutMs),
+    const content = await requestMedicalChatCompletion({
+      messages: buildPatchPrompt(context, ruleReport),
+      temperature: 0.2,
+      stream: false,
+      maxAttempts: 2,
     })
 
-    if (!response.ok) {
-      const responseBody = await response.text()
-      if (attempt === 0 && [408, 429, 500, 502, 503, 504].includes(response.status)) continue
-      throw new Error(`LLM request failed: ${response.status} ${responseBody.slice(0, 500)}`)
-    }
+    if (!content) return null
 
     try {
-      const content = await readChatCompletionContent(response)
-      return generatedReportSchema.parse(JSON.parse(extractJson(content)))
+      const parsed = JSON.parse(extractJson(content)) as unknown
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('LLM patch response was not a JSON object')
+      }
+      return parsed as FreeReportPatch
     } catch (error) {
       if (attempt === 0) continue
       throw error
@@ -1850,6 +1881,42 @@ const callLlm = async (context: ReportContext, ruleReport: GeneratedReport) => {
   }
 
   return null
+}
+
+const nonEmptyArray = <T>(value: T[] | undefined) => (Array.isArray(value) && value.length ? value : undefined)
+
+const mergeLlmPatch = (
+  patch: FreeReportPatch,
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+) => {
+  const patchedReport = generatedReportSchema.parse({
+    ...ruleReport,
+    disease: typeof patch.disease === 'string' && patch.disease.trim()
+      ? patch.disease.trim().slice(0, 24)
+      : ruleReport.disease,
+    treatment: typeof patch.treatment === 'string' && patch.treatment.trim()
+      ? patch.treatment.trim()
+      : ruleReport.treatment,
+    advantages: nonEmptyArray(patch.advantages) || ruleReport.advantages,
+    concerns: nonEmptyArray(patch.concerns) || ruleReport.concerns,
+    highlights: nonEmptyArray(patch.highlights) || ruleReport.highlights,
+    plan: {
+      ...ruleReport.plan,
+      direction: typeof patch.plan?.direction === 'string' && patch.plan.direction.trim()
+        ? patch.plan.direction.trim()
+        : ruleReport.plan.direction,
+      duration: typeof patch.plan?.duration === 'string' && patch.plan.duration.trim()
+        ? patch.plan.duration.trim()
+        : ruleReport.plan.duration,
+    },
+    id: context.submissionNo,
+    date: context.dateLabel,
+    need: getNeedForReport(context),
+    generatedBy: 'llm',
+  })
+
+  return enforceReportGuardrails(patchedReport, context, ruleReport)
 }
 
 const reportContainsAny = (report: GeneratedReport, terms: string[]) => {
@@ -1997,8 +2064,9 @@ export const generateReport = async (input: ReportSubmissionInput, submissionNo:
   const ruleReport = buildRuleReport(context)
 
   try {
-    const llmReport = await callLlm(context, ruleReport)
-    return sanitizeReportText(withFreeLayoutSections(llmReport ? enforceReportGuardrails(llmReport, context, ruleReport) : ruleReport, context))
+    const llmPatch = await callLlmPatch(context, ruleReport)
+    const patchedReport = llmPatch ? mergeLlmPatch(llmPatch, context, ruleReport) : ruleReport
+    return sanitizeReportText(withFreeLayoutSections(patchedReport, context))
   } catch (error) {
     const message = error instanceof Error ? error.message.replace(/sk-[A-Za-z0-9_*.-]+/g, 'sk-***') : String(error)
     console.warn(`Report LLM generation failed, using rule fallback: ${message.slice(0, 240)}`)

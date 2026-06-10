@@ -1,4 +1,3 @@
-import { config } from '../config.js'
 import type { ProfessionalReportSubmissionInput } from '../validators/professionalReportSubmission.js'
 import { getKnowledgeForProfessionalReport, type DocumentKnowledgeBlock } from './documentKnowledge.js'
 import {
@@ -22,6 +21,7 @@ import {
   type MedicalIndicatorFact,
   type MedicalMetastasisSignal,
 } from './medicalFactExtractor.js'
+import { requestMedicalChatCompletion, type MedicalLlmMessage } from './medicalLlmProvider.js'
 import { professionalReportSchema, type ProfessionalReport } from './professionalTypes.js'
 import { sanitizeReportText } from './textSanitizer.js'
 
@@ -2257,7 +2257,7 @@ const compactInputForPrompt = (input: ProfessionalReportSubmissionInput) => ({
   })),
 })
 
-const buildPrompt = (context: ProfessionalContext, ruleReport: ProfessionalReport) => {
+const buildPrompt = (context: ProfessionalContext, ruleReport: ProfessionalReport): MedicalLlmMessage[] => {
   const { input, disease, diseaseKey, selectedRegions, dataCompleteness, missingMaterials, decisionQuestions, redFlags, submissionNo, dateLabel, documentKnowledge } = context
 
   return [
@@ -2383,7 +2383,7 @@ const buildPrompt = (context: ProfessionalContext, ruleReport: ProfessionalRepor
 
 type ProfessionalReportPatch = Partial<Record<keyof ProfessionalReport, unknown>>
 
-const buildPatchPrompt = (context: ProfessionalContext, ruleReport: ProfessionalReport) => {
+const buildPatchPrompt = (context: ProfessionalContext, ruleReport: ProfessionalReport): MedicalLlmMessage[] => {
   const { input, disease, diseaseKey, selectedRegions, dataCompleteness, missingMaterials, decisionQuestions, redFlags, submissionNo, dateLabel, documentKnowledge } = context
 
   return [
@@ -2483,133 +2483,55 @@ const extractJson = (content: string) => {
   return match ? match[0] : trimmed
 }
 
-const readChatCompletionContent = async (response: Response) => {
-  const contentType = response.headers.get('content-type') || ''
-
-  if (contentType.includes('application/json')) {
-    const json = await response.json() as { choices?: Array<{ message?: { content?: string } }> }
-    const content = json.choices?.[0]?.message?.content
-    if (!content) throw new Error('LLM response did not include content')
-    return content
-  }
-
-  if (!response.body) throw new Error('LLM response did not include a readable body')
-
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let content = ''
-
-  for (;;) {
-    const { done, value } = await reader.read()
-    buffer += decoder.decode(value || new Uint8Array(), { stream: !done })
-    const lines = buffer.split(/\r?\n/)
-    buffer = lines.pop() || ''
-
-    for (const rawLine of lines) {
-      const line = rawLine.trim()
-      if (!line || !line.startsWith('data:')) continue
-      const data = line.slice(5).trim()
-      if (!data || data === '[DONE]') continue
-
-      try {
-        const chunk = JSON.parse(data) as {
-          choices?: Array<{
-            delta?: { content?: string }
-            message?: { content?: string }
-          }>
-        }
-        content += chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content || ''
-      } catch {
-        // Ignore non-JSON stream keepalive frames from compatible gateways.
-      }
-    }
-
-    if (done) break
-  }
-
-  if (!content.trim()) throw new Error('LLM stream did not include content')
-  return content
-}
-
 const callLlm = async (context: ProfessionalContext, ruleReport: ProfessionalReport) => {
-  if (!config.openaiApiKey) return null
-
-  const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.openaiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: config.openaiModel,
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const content = await requestMedicalChatCompletion({
       messages: buildPrompt(context, ruleReport),
       temperature: 0.25,
-      reasoning_effort: 'low',
-      response_format: { type: 'json_object' },
-      stream: true,
-    }),
-    signal: AbortSignal.timeout(config.openaiReportTimeoutMs),
-  })
-
-  if (!response.ok) {
-    const body = await response.text()
-    throw new Error(`LLM request failed: ${response.status} ${body.slice(0, 500)}`)
-  }
-
-  const content = await readChatCompletionContent(response)
-  return professionalReportSchema.parse(JSON.parse(extractJson(content)))
-}
-
-const callLlmPatch = async (context: ProfessionalContext, ruleReport: ProfessionalReport): Promise<ProfessionalReportPatch | null> => {
-  if (!config.openaiApiKey) return null
-
-  const body = JSON.stringify({
-    model: config.openaiModel,
-    messages: buildPatchPrompt(context, ruleReport),
-    temperature: 0.2,
-    reasoning_effort: 'low',
-    response_format: { type: 'json_object' },
-    stream: true,
-  })
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body,
-      signal: AbortSignal.timeout(Math.min(config.openaiReportTimeoutMs, 120000)),
+      stream: false,
+      maxAttempts: 1,
     })
+    if (!content) return null
 
-    if (!response.ok) {
-      const responseBody = await response.text()
-      if (attempt === 0 && [408, 429, 500, 502, 503, 504].includes(response.status)) continue
-      throw new Error(`LLM patch request failed: ${response.status} ${responseBody.slice(0, 500)}`)
-    }
-
-    let parsed: unknown
     try {
-      const content = await readChatCompletionContent(response)
-      parsed = JSON.parse(extractJson(content)) as unknown
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('LLM patch response was not a JSON object')
-      }
+      return professionalReportSchema.parse(JSON.parse(extractJson(content)))
     } catch (error) {
       if (attempt === 0) continue
       throw error
     }
-
-    if (process.env.DEBUG_REPORT_LLM === '1') {
-      console.warn(`[Professional report LLM patch] ${JSON.stringify(parsed).slice(0, 2000)}`)
-    }
-
-    return parsed as ProfessionalReportPatch
   }
 
   return null
+}
+
+const callLlmPatch = async (context: ProfessionalContext, ruleReport: ProfessionalReport): Promise<ProfessionalReportPatch | null> => {
+  let parsed: unknown
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const content = await requestMedicalChatCompletion({
+      messages: buildPatchPrompt(context, ruleReport),
+      temperature: 0.2,
+      stream: false,
+      maxAttempts: 2,
+    })
+    if (!content) return null
+
+    try {
+      parsed = JSON.parse(extractJson(content)) as unknown
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('LLM patch response was not a JSON object')
+      }
+      break
+    } catch (error) {
+      if (attempt === 0) continue
+      throw error
+    }
+  }
+
+  if (process.env.DEBUG_REPORT_LLM === '1') {
+    console.warn(`[Professional report LLM patch] ${JSON.stringify(parsed).slice(0, 2000)}`)
+  }
+
+  return parsed as ProfessionalReportPatch
 }
 
 const nonEmptyArray = <T>(value: T[] | undefined) => (Array.isArray(value) && value.length ? value : undefined)

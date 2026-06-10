@@ -16,6 +16,13 @@ export const config = {
   openaiTimeoutMs: Number(process.env.OPENAI_TIMEOUT_MS || 180000),
   openaiReportTimeoutMs: Number(process.env.OPENAI_REPORT_TIMEOUT_MS || process.env.OPENAI_TIMEOUT_MS || 180000),
   openaiVisionTimeoutMs: Number(process.env.OPENAI_VISION_TIMEOUT_MS || process.env.OPENAI_TIMEOUT_MS || 180000),
+  medicalLlmProvider: process.env.MEDICAL_LLM_PROVIDER || 'ant_ling',
+  medicalLlmApiKey: process.env.MEDICAL_LLM_API_KEY || '',
+  medicalLlmBaseUrl: (process.env.MEDICAL_LLM_BASE_URL || 'https://api.ant-ling.com/v1').replace(/\/$/, ''),
+  medicalLlmModel: process.env.MEDICAL_LLM_MODEL || 'AntAngelMed',
+  medicalLlmTimeoutMs: Number(process.env.MEDICAL_LLM_TIMEOUT_MS || process.env.OPENAI_REPORT_TIMEOUT_MS || process.env.OPENAI_TIMEOUT_MS || 180000),
+  medicalLlmStream: process.env.MEDICAL_LLM_STREAM !== 'false',
+  medicalLlmResponseFormat: process.env.MEDICAL_LLM_RESPONSE_FORMAT || 'json_object',
   ocrProvider: (process.env.OCR_PROVIDER || 'auto').toLowerCase(),
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
 }

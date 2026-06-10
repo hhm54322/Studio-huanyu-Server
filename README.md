@@ -28,6 +28,22 @@ OPENAI_REPORT_TIMEOUT_MS=240000
 OPENAI_VISION_TIMEOUT_MS=180000
 ```
 
+## Medical LLM
+
+Simple and professional report writing can be routed through AntAngelMed without changing the OCR provider:
+
+```env
+MEDICAL_LLM_PROVIDER=ant_ling
+MEDICAL_LLM_API_KEY=your-ant-ling-api-key
+MEDICAL_LLM_BASE_URL=https://api.ant-ling.com/v1
+MEDICAL_LLM_MODEL=AntAngelMed
+MEDICAL_LLM_TIMEOUT_MS=180000
+MEDICAL_LLM_STREAM=true
+MEDICAL_LLM_RESPONSE_FORMAT=json_object
+```
+
+If `MEDICAL_LLM_API_KEY` is empty, report generation falls back to the existing `OPENAI_*` OpenAI-compatible report model. OCR continues to use `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_VISION_MODEL`.
+
 `OCR_PROVIDER` supports:
 
 - `auto`: use OpenAI Vision when `OPENAI_API_KEY` is configured, then fallback to local `tesseract.js`.
