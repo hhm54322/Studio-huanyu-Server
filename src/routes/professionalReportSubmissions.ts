@@ -12,12 +12,29 @@ import {
   updateProfessionalReportSubmissionResult,
 } from '../db/professionalReportSubmissions.js'
 import { parseUploadedFile } from '../report/fileParser.js'
+import {
+  getParsedFileStatusCounts,
+  type ReportGenerationEvent,
+  writeReportGenerationEvent,
+} from '../report/generationEventLog.js'
 import { generateProfessionalReport } from '../report/professionalGenerator.js'
 import {
   professionalReportSubmissionSchema,
   type ProfessionalParsedFile,
   type ProfessionalUploadedFile,
 } from '../validators/professionalReportSubmission.js'
+
+const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
+type GenerationLogMeta = Pick<
+  ReportGenerationEvent,
+  | 'locale'
+  | 'visitPurpose'
+  | 'selectedRegionCount'
+  | 'hasUploads'
+  | 'uploadedFileCount'
+  | 'parsedFileCount'
+  | 'parsedFileStatuses'
+>
 
 const allowedMimeTypes = new Set([
   'application/pdf',
@@ -103,19 +120,48 @@ const parseMultipartSubmission = async (request: FastifyRequest) => {
 
 export const registerProfessionalReportSubmissionRoutes = async (app: FastifyInstance) => {
   app.post('/api/professional-report-submissions', async (request, reply) => {
+    let createdSubmissionNo = ''
+    let logMeta: Partial<GenerationLogMeta> = {}
+    const startedAt = Date.now()
     try {
       const input = request.isMultipart()
         ? await parseMultipartSubmission(request)
         : professionalReportSubmissionSchema.parse(request.body)
+      logMeta = {
+        locale: input.locale,
+        visitPurpose: input.medical.visitPurpose,
+        selectedRegionCount: input.preferences.selectedRegions.length,
+        hasUploads: input.uploadedFiles.length > 0,
+        uploadedFileCount: input.uploadedFiles.length,
+        parsedFileCount: input.parsedFiles.length,
+        parsedFileStatuses: getParsedFileStatusCounts(input.parsedFiles),
+      }
 
       const created = await createProfessionalReportSubmission(input, {
         userAgent: request.headers['user-agent'],
         ip: request.ip,
       })
+      createdSubmissionNo = created.submission_no
       await updateProfessionalReportSubmissionResult(created.submission_no, 'generating', null)
+      await writeReportGenerationEvent({
+        event: 'generation_started',
+        mode: 'professional',
+        status: 'started',
+        submissionNo: created.submission_no,
+        ...logMeta,
+      }).catch((logError) => request.log.error(logError))
 
       const report = await generateProfessionalReport(input, created.submission_no)
       await updateProfessionalReportSubmissionResult(created.submission_no, 'generated', report)
+      await writeReportGenerationEvent({
+        event: 'generation_completed',
+        mode: 'professional',
+        status: 'generated',
+        submissionNo: created.submission_no,
+        durationMs: Date.now() - startedAt,
+        ...logMeta,
+        generatedBy: report.generatedBy,
+      }).catch((logError) => request.log.error(logError))
 
       return reply.code(201).send({
         success: true,
@@ -139,10 +185,26 @@ export const registerProfessionalReportSubmissionRoutes = async (app: FastifyIns
       }
 
       request.log.error(error)
+      if (createdSubmissionNo) {
+        await writeReportGenerationEvent({
+          event: 'generation_completed',
+          mode: 'professional',
+          status: 'failed',
+          submissionNo: createdSubmissionNo,
+          durationMs: Date.now() - startedAt,
+          ...logMeta,
+          errorCode: 'PROFESSIONAL_REPORT_GENERATION_FAILED',
+          errorMessage: getErrorMessage(error),
+        }).catch((logError) => request.log.error(logError))
+        await updateProfessionalReportSubmissionResult(createdSubmissionNo, 'failed', {
+          error: 'PROFESSIONAL_REPORT_GENERATION_FAILED',
+          message: 'Medical LLM did not return a complete qualified professional report.',
+        }).catch((dbError) => request.log.error(dbError))
+      }
       return reply.code(500).send({
         success: false,
-        error: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to generate professional report',
+        error: 'PROFESSIONAL_REPORT_GENERATION_FAILED',
+        message: '本次专业报告未通过质量检查，请稍后重试，或确认上传资料清晰完整。我们没有使用通用模板替代，以避免生成不准确的报告。',
       })
     }
   })

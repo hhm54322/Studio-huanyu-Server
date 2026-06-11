@@ -23,6 +23,8 @@ export const config = {
   medicalLlmTimeoutMs: Number(process.env.MEDICAL_LLM_TIMEOUT_MS || process.env.OPENAI_REPORT_TIMEOUT_MS || process.env.OPENAI_TIMEOUT_MS || 180000),
   medicalLlmStream: process.env.MEDICAL_LLM_STREAM !== 'false',
   medicalLlmResponseFormat: process.env.MEDICAL_LLM_RESPONSE_FORMAT || 'json_object',
+  medicalLlmStrictReports: process.env.MEDICAL_LLM_STRICT_REPORTS !== 'false',
+  reportGenerationLogDir: process.env.REPORT_GENERATION_LOG_DIR || 'logs',
   ocrProvider: (process.env.OCR_PROVIDER || 'auto').toLowerCase(),
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
 }

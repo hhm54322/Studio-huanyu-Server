@@ -52,6 +52,7 @@ export const generatedReportSchema = z.object({
     features: z.array(z.string()).min(1),
   })).min(1),
   highlights: z.array(z.string()).min(1),
+  paymentAndInsurance: z.array(z.string()).min(2).optional(),
   layoutSections: z.array(reportLayoutSectionSchema).optional(),
   disclaimer: z.string(),
   generatedBy: z.enum(['llm', 'rules']),

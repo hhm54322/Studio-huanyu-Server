@@ -40,9 +40,13 @@ MEDICAL_LLM_MODEL=AntAngelMed
 MEDICAL_LLM_TIMEOUT_MS=180000
 MEDICAL_LLM_STREAM=true
 MEDICAL_LLM_RESPONSE_FORMAT=json_object
+MEDICAL_LLM_STRICT_REPORTS=true
+REPORT_GENERATION_LOG_DIR=logs
 ```
 
 If `MEDICAL_LLM_API_KEY` is empty, report generation falls back to the existing `OPENAI_*` OpenAI-compatible report model. OCR continues to use `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_VISION_MODEL`.
+
+`MEDICAL_LLM_STRICT_REPORTS` defaults to `true`. In strict mode, simple and professional report generation fails visibly if the medical LLM is unavailable, returns invalid JSON, or does not pass completeness/fact-alignment checks. Set it to `false` only for local development if you intentionally want the rule-based baseline to be returned.
 
 `OCR_PROVIDER` supports:
 
@@ -65,8 +69,13 @@ API:
 CLI:
 
 ```bash
+npm run reports:stats
+npm run reports:stats -- --from 2026-06-11 --to 2026-06-12
+npm run reports:stats -- --mode professional --format json
 npm run submissions:list
 npm run submissions:get -- rpt_20260510_xxxxxxxx
 npm run submissions:export -- --from 2026-05-01 --to 2026-05-10
 npm run submissions:export -- --format json
 ```
+
+Report generation events are written as JSONL files under `REPORT_GENERATION_LOG_DIR`, one file per day, for example `logs/report-generation-2026-06-11.jsonl`. The event log is intentionally non-sensitive: it records mode, submission number, visit purpose, upload counts, parser statuses, duration, result, provider/model, and failure code/message, but not patient identity fields or raw medical record text.

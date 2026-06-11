@@ -1,4 +1,5 @@
 import type { ReportSubmissionInput } from '../validators/reportSubmission.js'
+import { config } from '../config.js'
 import { getKnowledgeForFreeReport, type DocumentKnowledgeBlock } from './documentKnowledge.js'
 import {
   dentalAdvantages,
@@ -19,10 +20,30 @@ import { generatedReportSchema, type GeneratedReport } from './types.js'
 
 type FreeReportPatch = Partial<Pick<
   GeneratedReport,
-  'disease' | 'treatment' | 'advantages' | 'concerns' | 'highlights'
+  | 'disease'
+  | 'treatment'
+  | 'countries'
+  | 'advantages'
+  | 'concerns'
+  | 'hospitals'
+  | 'highlights'
+  | 'paymentAndInsurance'
 > & {
-  plan?: Partial<Pick<GeneratedReport['plan'], 'direction' | 'duration'>>
+  plan?: Partial<GeneratedReport['plan']>
 }>
+
+const shouldRequireLlmReport = () => config.medicalLlmStrictReports
+
+const rejectOrFallback = <T>(reason: string, fallback: T): T => {
+  if (shouldRequireLlmReport()) {
+    throw new Error(`MEDICAL_LLM_QUALITY_REJECTED: ${reason}`)
+  }
+  return fallback
+}
+
+const sanitizeGenerationError = (error: unknown) => (
+  error instanceof Error ? error.message : String(error)
+).replace(/sk-[A-Za-z0-9_*.-]+/g, 'sk-***')
 
 type DiseaseMatch = {
   key: string
@@ -736,8 +757,8 @@ const symptomSignalGroups: Record<string, SymptomSignalGroup> = {
   breast_cancer: {
     label: '乳腺专科/乳腺肿瘤',
     diseaseKey: 'breast_cancer',
-    keywords: ['乳腺', '乳房', '乳头', '腋窝', '乳腺肿块', '乳房肿块', '钼靶', 'bi-rads', 'birads', 'her2', '雌激素', '孕激素', '保乳'],
-    inferKeywords: ['乳腺癌', '乳癌', '乳腺肿瘤', '乳房肿瘤', '乳腺肿块', '乳房肿块', 'bi-rads4', 'bi-rads5', 'birads4', 'birads5', 'her2', '保乳'],
+    keywords: ['乳腺', '乳房', '左乳', '右乳', '双乳', '乳癌', '乳头', '腋窝', '乳腺肿块', '乳房肿块', '乳肿块', '钼靶', 'bi-rads', 'birads', 'her2', '雌激素', '孕激素', '内分泌治疗', '保乳'],
+    inferKeywords: ['乳腺癌', '乳癌', '乳腺肿瘤', '乳房肿瘤', '左乳肿瘤', '右乳肿瘤', '乳腺肿块', '乳房肿块', '乳肿块', 'bi-rads4', 'bi-rads5', 'birads4', 'birads5', 'her2', '保乳'],
   },
   lung_cancer: {
     label: '肺部专科/肺肿瘤',
@@ -1241,6 +1262,13 @@ const buildFreeLayoutSections = (report: GeneratedReport, context: ReportContext
     '确认预算、保险预授权要求和希望来华城市。',
     '进入专业版后上传原始资料，由系统生成更完整的专家预审和行程方案。',
   ]
+  const paymentAndInsuranceItems = report.paymentAndInsurance?.length
+    ? report.paymentAndInsurance
+    : [
+      '按医院正式报价、平台服务项目、住宿交通和翻译陪诊分项确认预算，避免只看单一治疗包价格。',
+      '如持有国际商业保险，建议在出行前向保险公司确认中国医院网络、预授权、直付或事后理赔材料要求。',
+      '准备诊断证明、医生治疗计划、费用预估、发票抬头和英文/中文医学翻译件，用于预授权或理赔沟通。',
+    ]
   const proUpgradeItems = [
     ...report.highlights.slice(0, 5),
     ...personalization.requiredMaterials.slice(0, 3).map((item) => `补充${item}后，可进一步完善费用区间、治疗先后顺序和出行安排。`),
@@ -1432,6 +1460,22 @@ const buildFreeLayoutSections = (report: GeneratedReport, context: ReportContext
       ],
     },
     {
+      key: 'payment',
+      label: '支付与保险准备',
+      labelEn: 'Payment & Insurance Preparation',
+      icon: 'Shield',
+      summary: '本节为预算和保险沟通清单，不构成保险报销承诺。',
+      blocks: [
+        {
+          type: 'notice',
+          title: '支付与保险确认清单',
+          description: '来华前建议先确认支付路径、预授权材料和理赔口径，避免抵达后因材料不齐影响预约或结算。',
+          items: paymentAndInsuranceItems,
+          tone: 'warning',
+        },
+      ],
+    },
+    {
       key: 'upgrade',
       label: '获取包含个人病情的专业评估',
       labelEn: 'Upgrade for a Personalized Professional Report',
@@ -1463,14 +1507,12 @@ const withFreeLayoutSections = (report: GeneratedReport, context: ReportContext)
 })
 
 const buildRuleReport = (context: ReportContext): GeneratedReport => {
-  const { disease, diseaseKey, input, personalization, selectedRegionItems, submissionNo, dateLabel, medicalFacts } = context
+  const { disease, diseaseKey, input, personalization, selectedRegionItems, submissionNo, dateLabel } = context
   const countries = [chinaCountry(disease, personalization), ...selectedRegionItems.map((item) => personalizeRegionItem(item, context))]
   const score = estimateScore(disease, input, personalization)
   const selectedNames = selectedRegionItems.map((item) => item.name).join('、') || '所选目的地'
   const firstDecision = personalization.decisionPoints[0] || '明确下一步诊疗方向'
   const firstMaterial = personalization.requiredMaterials.slice(0, 3).join('、')
-  const parsedEvidence = getParsedFileEvidence(input)
-  const medicalFactHighlights = summarizeMedicalFactBundle(medicalFacts, 6)
   const direction = [
     ...personalization.planPriorities,
     disease.direction,
@@ -1525,12 +1567,6 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
         ? [{ concern: '存在其他科室信号', solution: `症状中还出现${personalization.secondaryDirections.join('、')}相关线索，需确认是否合并问题或是否需要先转对应专科。` }]
         : []),
       { concern: '当前信息仍不足以直接定方案', solution: `建议补充${firstMaterial || '近期检查资料和既往治疗记录'}，由对应专科判断治疗优先级` },
-      ...(parsedEvidence.length
-        ? [{ concern: '上传资料已用于预审', solution: `已参考${parsedEvidence.slice(0, 2).join('；').slice(0, 180)}，但原始报告仍需医生复核。` }]
-        : []),
-      ...(input.uploadedFiles.length && !medicalFacts.hasActionableFacts
-        ? [{ concern: '上传资料识别不足', solution: '已收到上传文件，但暂未识别出足够医学事实；当前报告不能据此判断病理、影像或治疗阶段，建议重新上传清晰图片/PDF原文或补充文字摘要。' }]
-        : []),
       { concern: '急性风险排除', solution: personalization.urgencyNote },
       { concern: '语言沟通', solution: '建议配置医学翻译和就医管家，减少跨科室沟通误差' },
       { concern: '治疗连续性', solution: `出发前需围绕“${firstDecision}”确认分阶段治疗、回国维护和远程复诊方式` },
@@ -1544,11 +1580,14 @@ const buildRuleReport = (context: ReportContext): GeneratedReport => {
       breakdown: metastaticBreastEnhancement?.plan.breakdown || specialtyEnhancement?.plan.breakdown || disease.breakdown,
     },
     packages,
+    paymentAndInsurance: [
+      '建议先按医院正式报价、平台服务项目、翻译陪诊、住宿交通和复诊随访分项确认预算。',
+      '如持有国际商业保险，需向保险公司确认中国医院是否在网络内、是否需要预授权、是否支持直付或事后理赔。',
+      '建议准备诊断证明、治疗计划、费用预估、发票明细和医学翻译件；实际报销以保险公司书面回复为准。',
+    ],
     highlights: [
       ...(metastaticBreastEnhancement?.highlights || []),
       ...(specialtyEnhancement?.highlights || []),
-      ...(!metastaticBreastEnhancement && !specialtyEnhancement && medicalFactHighlights.length ? medicalFactHighlights.map((item) => `资料识别：${cleanEvidenceSnippet(item, 120)}`) : []),
-      ...(!metastaticBreastEnhancement && !specialtyEnhancement && parsedEvidence.length ? [`已读取上传资料摘要：${cleanEvidenceSnippet(parsedEvidence[0], 120)}`] : []),
       ...disease.advantages,
       `围绕“${firstDecision}”做专家人工复核`,
       `优先核对${firstMaterial || '关键检查资料'}后再出行`,
@@ -1571,6 +1610,7 @@ const compactPatientInputForPrompt = (input: ReportSubmissionInput) => ({
     chiefComplaint: truncateForPrompt(input.basicInfo.chiefComplaint, 700),
   },
   selectedRegions: input.selectedRegions,
+  hasUploadedMedicalRecords: input.uploadedFiles.length > 0,
   uploadedFiles: input.uploadedFiles.map((file) => ({
     fieldName: file.fieldName,
     originalName: file.originalName,
@@ -1635,17 +1675,6 @@ const compactDiseaseForPrompt = (disease: KnowledgeDisease) => ({
   keywords: disease.keywords.slice(0, 10),
 })
 
-const compactRegionForPrompt = (region: KnowledgeRegion) => ({
-  flag: region.flag,
-  name: region.name,
-  fee: region.fee,
-  wait: region.wait,
-  tech: truncateForPrompt(region.tech, 120),
-  service: truncateForPrompt(region.service, 120),
-  visa: region.visa,
-  follow: truncateForPrompt(region.follow, 120),
-})
-
 const compactRuleReportForPrompt = (report: GeneratedReport) => ({
   id: report.id,
   date: report.date,
@@ -1675,94 +1704,6 @@ const compactRuleReportForPrompt = (report: GeneratedReport) => ({
   generatedBy: report.generatedBy,
 })
 
-const buildPrompt = (context: ReportContext, ruleReport: GeneratedReport): MedicalLlmMessage[] => {
-  const { input, disease, diseaseKey, personalization, selectedRegionItems, submissionNo, dateLabel, documentKnowledge, medicalFacts } = context
-  return [
-    {
-      role: 'system',
-      content: [
-        '你是寰宇云医的国际医疗预审报告生成助手。',
-        '你的核心任务不是套模板，而是基于用户选择的科室、用户主诉、地区偏好和知识库，生成贴合实际情况的个性化预审报告。',
-        '只能基于用户资料和给定知识库生成报告；不得编造不存在的医院、价格、疗效承诺或确定诊断。',
-        '输出必须是严格 JSON，不要 Markdown，不要解释。',
-        '报告语言使用简体中文。',
-        '请保持医学审慎：使用“建议、可考虑、需医生确认”等措辞。',
-        '如果用户主诉与所选科室不完全一致，应指出需要重新确认方向，不要强行按所选科室输出。',
-        '如果所选科室与主诉明显无关，例如选牙科但描述掉头发、腹痛等，必须按综合分诊评估输出；disease 写“综合分诊评估”，treatment/concerns 说明不匹配原因和可能方向。',
-        '如果主诉没有明显跑偏、但缺少所选科室典型信息，应按所选科室谨慎预审，并明确“信息不足、需补充检查/诊断资料”，不要直接改成其他病种。',
-        '如用户描述包含急症或危险信号，应优先提示先就近处理风险，再讨论跨境就医。',
-      ].join('\n'),
-    },
-    {
-      role: 'user',
-      content: JSON.stringify({
-        task: '生成高度个性化的来华就医可行性预审报告 JSON',
-        generationPrinciples: [
-          '用户主诉必须是报告主轴：treatment、advantages、concerns、plan.direction、plan.breakdown、highlights 都要回应用户实际填写的症状/检查/诉求。',
-          '如果 structuredMedicalFacts 中有可用医学事实，必须优先把其中的日期、报告类型、诊断、指标、影像/病理发现作为报告依据；如果没有可用事实，必须说明上传资料识别不足。',
-          'baselineRuleReport 只能作为字段结构参考，不能照抄其中的通用文案。',
-          '国家对比必须结合当前科室和用户诉求。如果知识库中的地区费用明显偏向大病种，不适用于当前科室，应改写成“按项目评估”的保守表达。',
-          '费用明细要围绕可能发生的真实项目拆分；不确定时给分层区间，避免单一、看似精确但无依据的数字。',
-          '医院推荐理由必须说明为什么适合当前用户主诉，而不是只说医院强。',
-          diseaseKey === 'dental' ? `牙科方向只能推荐${dentalPartner.name}，不得推荐北大口腔、上海九院、中大口腔或其他口腔医院；费用优先使用鼎植资料中的半口即刻负重和贴面价格，未提供明细的基础牙科项目必须说明需面诊报价。` : '',
-          diseaseKey === 'dental' ? `种植牙模拟方案只作为专业版/后续升级服务表达，不要把免费预审写得过度臃肿。` : '',
-          '不要把“疾病/科室名称”当作已确诊诊断；需要医生结合资料确认。',
-          'disease 字段只写简短科室/方向名称，不超过16个汉字；未确诊、需确认等说明放到 treatment 或 concerns。',
-          '当 personalization.mismatch 为 true 时，不得按 requestedDepartment 生成专科治疗方案，必须优先输出“科室选择需确认/综合分诊”的报告。',
-          '当 personalization.weakMatch 为 true 且 mismatch 为 false 时，可以保留 requestedDepartment 方向，但必须在 concerns 中提示关联信息不足和补资料要求。',
-        ].filter(Boolean),
-        personalization,
-        specialtyRules: personalization.specialtyRules,
-        structuredMedicalFacts: compactMedicalFactsForPrompt(medicalFacts),
-        documentKnowledge: compactDocumentKnowledgeForPrompt(documentKnowledge),
-        documentKnowledgeUsageRules: [
-          '这些知识块来自用户提供资料整理后的专业要点，只能作为生成依据和质量约束。',
-          '不得逐句复制 evidenceSummary；必须结合 patientInput 和 personalization 重写。',
-          '如果知识块与当前病种或主诉不匹配，应忽略。',
-          '涉及费用、预后、保险、医院能力时，用“参考、预估、需确认”措辞，不得承诺。',
-        ],
-        qualityChecklist: [
-          '是否明确回应了用户 chiefComplaint 中至少两个具体信息点？',
-          '是否说明了下一步最关键的医学判断？',
-          '是否列出了该场景真正需要补充的资料？',
-          '费用、周期、随访是否与该科室和主诉匹配？',
-          '是否避免了不恰当的通用文案，如把牙科写成肿瘤、把体检写成治疗、把未确诊写成确诊？',
-        ],
-        outputSchema: {
-          id: 'string',
-          date: 'string',
-          subtitle: 'string',
-          disease: 'string',
-          treatment: 'string',
-          need: 'string',
-          countries: [{ flag: 'string', name: 'string', fee: 'string', wait: 'string', tech: 'string', service: 'string', visa: 'string', follow: 'string', recommended: 'boolean optional' }],
-          score: 'integer 0-100',
-          advantages: [{ label: 'string', value: 'string' }],
-          concerns: [{ concern: 'string', solution: 'string' }],
-          hospitals: [{ city: 'string', name: 'string', reason: 'string' }],
-          plan: { direction: 'string', duration: 'string', totalCost: 'string', breakdown: [{ item: 'string', cost: 'string' }] },
-          packages: [{ name: 'string', price: 'string', icon: 'FileText|Video|MessageSquare', highlight: 'boolean', features: ['string'] }],
-          highlights: ['string'],
-          disclaimer: 'string',
-          generatedBy: '"llm"',
-        },
-        fixedFields: { id: submissionNo, date: dateLabel, generatedBy: 'llm' },
-        patientInput: compactPatientInputForPrompt(input),
-        uploadedFileEvidence: getParsedFileEvidence(input).slice(0, 5).map((item) => truncateForPrompt(item, 900)),
-        matchedKnowledge: {
-          diseaseKey,
-          disease: compactDiseaseForPrompt(disease),
-          chinaCountry: chinaCountry(disease, personalization),
-          selectedRegions: selectedRegionItems.map((item) => compactRegionForPrompt(personalizeRegionItem(item, context))),
-          packages,
-          dentalPartner: diseaseKey === 'dental' ? dentalPartner : undefined,
-        },
-        baselineRuleReport: compactRuleReportForPrompt(ruleReport),
-      }),
-    },
-  ]
-}
-
 const buildPatchPrompt = (context: ReportContext, ruleReport: GeneratedReport): MedicalLlmMessage[] => {
   const { input, disease, diseaseKey, personalization, medicalFacts, documentKnowledge } = context
 
@@ -1770,9 +1711,9 @@ const buildPatchPrompt = (context: ReportContext, ruleReport: GeneratedReport): 
     {
       role: 'system',
       content: [
-        '你是寰宇云医简易预审报告的医学内容增强助手。',
-        '系统已经有一份完整规则基线报告；你只需要输出小 JSON patch，不要输出完整报告。',
-        '只基于用户填写的基础信息、主诉、科室方向和给定知识摘要增强医学表达。',
+        '你是寰宇云医简易预审报告的医学内容生成助手。',
+        '系统已经有一份完整字段结构基线；你要输出完整内容 JSON patch，用于把基线改成更贴合用户的专业预审报告。',
+        '只基于用户填写的基础信息、主诉、科室方向、地区偏好和给定知识摘要生成。',
         '不得编造检查数值、上传报告内容、确定诊断、医生姓名、疗效承诺或具体处方。',
         '简易报告没有上传医疗报告时，不得出现“上传资料提示、已读取上传、从报告可见”等表达。',
         '输出必须是严格 JSON，不要 Markdown，不要解释。',
@@ -1781,26 +1722,36 @@ const buildPatchPrompt = (context: ReportContext, ruleReport: GeneratedReport): 
     {
       role: 'user',
       content: JSON.stringify({
-        task: '生成简易报告医学增强 JSON patch',
+        task: '生成简易报告完整内容 JSON patch',
         allowedPatchFields: [
           'disease',
           'treatment',
+          'countries',
           'advantages',
           'concerns',
+          'hospitals',
           'highlights',
           'plan.direction',
           'plan.duration',
+          'plan.totalCost',
+          'plan.breakdown',
+          'paymentAndInsurance',
         ],
         outputSchema: {
-          disease: '可选，简短方向名称，不超过16个汉字',
-          treatment: '可选，120-260字，回应用户主诉并保持医学审慎',
-          advantages: '可选，2-4项，每项 {label,value}',
-          concerns: '可选，3-6项，每项 {concern,solution}',
-          highlights: '可选，3-6条简短要点',
+          disease: '必填，简短方向名称，不超过16个汉字',
+          treatment: '必填，建议120-260字，回应用户主诉、当前限制、下一步医学判断并保持医学审慎',
+          countries: '必填，沿用 baselineRuleReport.countries 的国家/地区和 flag，可重写 fee/wait/tech/service/visa/follow/recommended',
+          advantages: '必填，3-5项，每项 {label,value}，体现中国方案价值、资料限制和下一步判断',
+          concerns: '必填，4-7项，每项 {concern,solution}，覆盖资料不足、急症排除、费用波动、治疗连续性等',
+          hospitals: '必填，非牙科3项；牙科只允许1项鼎植口腔；每项 {city,name,reason}，reason 必须解释为何匹配当前主诉',
+          highlights: '必填，4-7条简短要点',
           plan: {
-            direction: '可选，检查/复核/转诊/管理路径',
-            duration: '可选，在华停留或远程预审周期，需保守表达',
+            direction: '必填，检查/复核/转诊/管理路径，至少4个步骤',
+            duration: '必填，在华停留或远程预审周期，需保守表达',
+            totalCost: '必填，中国方案预估总费用，保守区间',
+            breakdown: '必填，4-8项，每项 {item,cost}，按检查/治疗/服务/住宿生活分层',
           },
+          paymentAndInsurance: '必填，3-5条，覆盖预算分项、预授权/直付/事后理赔、材料清单和不承诺报销',
         },
         patientInput: {
           locale: input.locale,
@@ -1830,19 +1781,26 @@ const buildPatchPrompt = (context: ReportContext, ruleReport: GeneratedReport): 
           disease: ruleReport.disease,
           treatment: ruleReport.treatment,
           need: ruleReport.need,
+          countries: ruleReport.countries,
           advantages: ruleReport.advantages,
           concerns: ruleReport.concerns,
+          hospitals: ruleReport.hospitals,
           plan: {
             direction: ruleReport.plan.direction,
             duration: ruleReport.plan.duration,
+            totalCost: ruleReport.plan.totalCost,
+            breakdown: ruleReport.plan.breakdown,
           },
+          packages: ruleReport.packages,
+          paymentAndInsurance: ruleReport.paymentAndInsurance,
           highlights: ruleReport.highlights,
         },
         qualityRules: [
           '必须回应 chiefComplaint 中至少两个具体信息点。',
           '没有上传医疗报告时，只能写“基于表单信息/用户自填信息”。',
           '不得把科室方向写成已确诊诊断。',
-          '费用、医院、套餐字段已有规则基线，本 patch 不要改。',
+          '国家对比、医院推荐和费用明细要围绕当前主诉改写，不能照抄通用基线。',
+          'packages 字段不需要输出，由系统沿用基线。',
           diseaseKey === 'dental' ? `牙科方向只允许围绕${dentalPartner.name}和牙科主诉表达，不要新增其他口腔医院。` : '',
         ].filter(Boolean),
       }),
@@ -1898,9 +1856,12 @@ const mergeLlmPatch = (
     treatment: typeof patch.treatment === 'string' && patch.treatment.trim()
       ? patch.treatment.trim()
       : ruleReport.treatment,
+    countries: nonEmptyArray(patch.countries) || ruleReport.countries,
     advantages: nonEmptyArray(patch.advantages) || ruleReport.advantages,
     concerns: nonEmptyArray(patch.concerns) || ruleReport.concerns,
+    hospitals: nonEmptyArray(patch.hospitals) || ruleReport.hospitals,
     highlights: nonEmptyArray(patch.highlights) || ruleReport.highlights,
+    paymentAndInsurance: nonEmptyArray(patch.paymentAndInsurance) || ruleReport.paymentAndInsurance,
     plan: {
       ...ruleReport.plan,
       direction: typeof patch.plan?.direction === 'string' && patch.plan.direction.trim()
@@ -1909,6 +1870,10 @@ const mergeLlmPatch = (
       duration: typeof patch.plan?.duration === 'string' && patch.plan.duration.trim()
         ? patch.plan.duration.trim()
         : ruleReport.plan.duration,
+      totalCost: typeof patch.plan?.totalCost === 'string' && patch.plan.totalCost.trim()
+        ? patch.plan.totalCost.trim()
+        : ruleReport.plan.totalCost,
+      breakdown: nonEmptyArray(patch.plan?.breakdown) || ruleReport.plan.breakdown,
     },
     id: context.submissionNo,
     date: context.dateLabel,
@@ -1922,6 +1887,33 @@ const mergeLlmPatch = (
 const reportContainsAny = (report: GeneratedReport, terms: string[]) => {
   const text = JSON.stringify(report)
   return terms.some((term) => text.includes(term))
+}
+
+const ensureFreeReportCompleteness = (report: GeneratedReport, context: ReportContext) => {
+  const reportText = JSON.stringify(report)
+  const requiredChecks: Array<[boolean, string]> = [
+    [report.generatedBy === 'llm', 'report was not generated by medical LLM'],
+    [report.countries.length >= 2, 'country comparison is incomplete'],
+    [report.countries.some((country) => country.recommended || country.name.includes('中国')), 'China recommendation is missing'],
+    [context.diseaseKey === 'dental' ? report.hospitals.length >= 1 : report.hospitals.length >= 3, 'hospital recommendations are incomplete'],
+    [report.advantages.length >= 3, 'advantage analysis is incomplete'],
+    [report.concerns.length >= 4, 'risk and concern analysis is incomplete'],
+    [report.plan.breakdown.length >= 4, 'cost breakdown is incomplete'],
+    [report.highlights.length >= 4, 'key highlights are incomplete'],
+    [Boolean(report.paymentAndInsurance?.length && report.paymentAndInsurance.length >= 2), 'payment and insurance preparation is missing'],
+  ]
+  const failed = requiredChecks.find(([passed]) => !passed)
+  if (failed) throw new Error(`MEDICAL_LLM_INCOMPLETE_REPORT: ${failed[1]}`)
+
+  if (!context.input.uploadedFiles.length && includesAny(reportText, [
+    '上传资料提示',
+    '已读取上传',
+    '从上传资料',
+    '已从上传资料',
+    'OCR',
+  ])) {
+    throw new Error('MEDICAL_LLM_FACT_MISMATCH: free report claimed uploaded medical records')
+  }
 }
 
 const hasDentalTemplateLeak = (reportText: string, hasDentalFacts: boolean) => {
@@ -2018,7 +2010,7 @@ const enforceReportGuardrails = (report: GeneratedReport, context: ReportContext
     const leaksRequestedSpecialty = requestedTerms.some((term) => report.disease.includes(term) || report.plan.direction.includes(term))
 
     if (!acknowledgesMismatch || leaksRequestedSpecialty) {
-      return ruleReport
+      return rejectOrFallback('free report did not acknowledge department mismatch', ruleReport)
     }
   }
 
@@ -2027,24 +2019,36 @@ const enforceReportGuardrails = (report: GeneratedReport, context: ReportContext
   }
 
   if (diseaseKey === 'dental' && reportContainsAny(report, ['肿瘤MDT', '放疗', '化疗', '靶向', '免疫治疗']) && !report.need.includes('肿瘤')) {
-    return ruleReport
+    return rejectOrFallback('dental report leaked oncology treatment template', ruleReport)
   }
 
   if (diseaseKey === 'premium_checkup' && reportContainsAny(report, ['手术及住院', '放疗', '化疗']) && !report.need.includes('已确诊')) {
-    return ruleReport
+    return rejectOrFallback('checkup report leaked treatment template', ruleReport)
   }
 
   if (!isLlmReportAlignedWithStructuredFacts(report, context)) {
-    return ruleReport
+    return rejectOrFallback('free report was not aligned with submitted facts', ruleReport)
   }
 
-  return finalizeReportCosts({
+  const finalizedReport = finalizeReportCosts({
     ...report,
     id: context.submissionNo,
     date: context.dateLabel,
     need: getNeedForReport(context),
     generatedBy: 'llm' as const,
   }, context)
+
+  ensureFreeReportCompleteness(finalizedReport, context)
+  return finalizedReport
+}
+
+const generateLlmFreeReport = async (context: ReportContext, ruleReport: GeneratedReport) => {
+  const llmPatch = await callLlmPatch(context, ruleReport)
+  if (!llmPatch) {
+    return rejectOrFallback('medical LLM returned empty free report', ruleReport)
+  }
+
+  return mergeLlmPatch(llmPatch, context, ruleReport)
 }
 
 export const generateReport = async (input: ReportSubmissionInput, submissionNo: string): Promise<GeneratedReport> => {
@@ -2062,14 +2066,28 @@ export const generateReport = async (input: ReportSubmissionInput, submissionNo:
     medicalFacts,
   }
   const ruleReport = buildRuleReport(context)
+  const generationAttempts = shouldRequireLlmReport() ? 2 : 1
+  let lastError: unknown
 
-  try {
-    const llmPatch = await callLlmPatch(context, ruleReport)
-    const patchedReport = llmPatch ? mergeLlmPatch(llmPatch, context, ruleReport) : ruleReport
-    return sanitizeReportText(withFreeLayoutSections(patchedReport, context))
-  } catch (error) {
-    const message = error instanceof Error ? error.message.replace(/sk-[A-Za-z0-9_*.-]+/g, 'sk-***') : String(error)
-    console.warn(`Report LLM generation failed, using rule fallback: ${message.slice(0, 240)}`)
-    return sanitizeReportText(withFreeLayoutSections(ruleReport, context))
+  for (let attempt = 1; attempt <= generationAttempts; attempt += 1) {
+    try {
+      const llmReport = await generateLlmFreeReport(context, ruleReport)
+      return sanitizeReportText(withFreeLayoutSections(llmReport, context))
+    } catch (error) {
+      lastError = error
+      const message = sanitizeGenerationError(error)
+      if (attempt < generationAttempts) {
+        console.warn(`Report LLM generation attempt ${attempt}/${generationAttempts} failed, retrying: ${message.slice(0, 240)}`)
+      }
+    }
   }
+
+  const message = sanitizeGenerationError(lastError)
+  if (shouldRequireLlmReport()) {
+    console.warn(`Report LLM generation failed after ${generationAttempts} attempts: ${message.slice(0, 240)}`)
+    throw new Error('FREE_REPORT_LLM_GENERATION_FAILED')
+  }
+
+  console.warn(`Report LLM generation failed, using rule fallback because MEDICAL_LLM_STRICT_REPORTS=false: ${message.slice(0, 240)}`)
+  return sanitizeReportText(withFreeLayoutSections(ruleReport, context))
 }

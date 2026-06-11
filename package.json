@@ -12,6 +12,7 @@
     "reports:check-ocr": "tsx src/scripts/checkMedicalOcr.ts",
     "reports:verify-records": "tsx src/scripts/verifyMedicalRecordReportQuality.ts",
     "reports:preview-real-upload": "tsx src/scripts/generateRealUploadReportPreview.ts",
+    "reports:stats": "tsx src/cli/reportGenerationStats.ts",
     "submissions:list": "tsx src/cli/submissions.ts list",
     "submissions:get": "tsx src/cli/submissions.ts get",
     "submissions:export": "tsx src/cli/submissions.ts export"
