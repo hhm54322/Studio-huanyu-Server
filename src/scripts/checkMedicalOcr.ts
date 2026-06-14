@@ -28,6 +28,12 @@ const facts = parsed.metadata?.medicalFacts
 
 console.log(JSON.stringify({
   ocrProvider: config.ocrProvider,
+  ocrFallbackProvider: config.ocrFallbackProvider,
+  baiduMedicalOcrEndpoint: config.baiduMedicalOcrEndpoint,
+  baiduOcrGeneralFallback: config.baiduOcrGeneralFallback,
+  baiduOcrGeneralEndpoint: config.baiduOcrGeneralEndpoint,
+  baiduOcrGeneralLanguage: config.baiduOcrGeneralLanguage,
+  hasBaiduOcrKey: Boolean(config.baiduOcrApiKey && config.baiduOcrSecretKey),
   openaiVisionModel: config.openaiVisionModel,
   file: filePath,
   status: parsed.status,

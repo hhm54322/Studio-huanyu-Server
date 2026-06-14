@@ -2,8 +2,11 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { extractMedicalFactsFromText } from './medicalFactExtractor.js'
 import {
+  recognizeBaiduMedicalImage,
   recognizeOpenaiVisionImage,
   recognizeTesseractImage,
+  shouldUseBaiduMedicalOcr,
+  shouldUseVisionOcrFallback,
   shouldUseTesseractFallback,
   shouldUseVisionOcr,
   type MedicalOcrResult,
@@ -185,7 +188,36 @@ const parseVisionImageFile = async (input: ParserInput) => {
   return createParsedFile(input, result.parser, result.text.length > 30 ? 'parsed' : 'partial', result.text, result.metadata)
 }
 
+const parseBaiduMedicalImageFile = async (input: ParserInput) => {
+  const result = await recognizeBaiduMedicalImage(input)
+  if (!result) return null
+
+  return createParsedFile(input, result.parser, result.text.length > 30 ? 'parsed' : 'partial', result.text, result.metadata)
+}
+
 const parseImageFile = async (input: ParserInput) => {
+  if (shouldUseBaiduMedicalOcr()) {
+    try {
+      const baiduResult = await parseBaiduMedicalImageFile(input)
+      if (baiduResult) return baiduResult
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (!shouldUseVisionOcrFallback() && !shouldUseTesseractFallback()) throw error
+      console.warn(`Image Baidu medical OCR failed, trying configured fallback: ${message.slice(0, 180)}`)
+    }
+  }
+
+  if (shouldUseVisionOcrFallback()) {
+    try {
+      const visionResult = await parseVisionImageFile(input)
+      if (visionResult) return visionResult
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (!shouldUseTesseractFallback()) throw error
+      console.warn(`Image vision OCR fallback failed, falling back to tesseract: ${message.slice(0, 180)}`)
+    }
+  }
+
   if (shouldUseVisionOcr()) {
     try {
       const visionResult = await parseVisionImageFile(input)
@@ -230,7 +262,48 @@ const parsePdfScreenshots = async (
     }> = []
     const pageTexts: string[] = []
 
-    if (shouldUseVisionOcr()) {
+    if (shouldUseBaiduMedicalOcr()) {
+      for (const page of pages) {
+        try {
+          const baiduResult = await recognizeBaiduMedicalImage(input, {
+            buffer: page.data,
+            mimeType: 'image/png',
+            label: `PDF第${page.pageNumber}页`,
+          })
+          if (!baiduResult) continue
+          pageTexts.push(`【PDF第${page.pageNumber}页 OCR】\n${baiduResult.text}`)
+          pageResults.push({
+            pageNumber: page.pageNumber,
+            parser: baiduResult.parser,
+            textLength: baiduResult.text.length,
+            notes: baiduResult.metadata.logId ? `baidu log_id: ${baiduResult.metadata.logId}` : undefined,
+          })
+        } catch (error) {
+          pageResults.push({
+            pageNumber: page.pageNumber,
+            parser: 'baidu-medical-ocr',
+            textLength: 0,
+            error: error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180),
+          })
+        }
+      }
+    }
+
+    let visionText = pageTexts.join('\n\n').trim()
+    if (isUsefulPdfText(visionText, input.originalName)) {
+      return {
+        text: visionText,
+        parser: shouldUseBaiduMedicalOcr() ? 'pdf-screenshot+baidu-medical-ocr' : 'pdf-screenshot+openai-vision',
+        metadata: {
+          pdfOcrPagesAttempted: pages.length,
+          pdfOcrTotalPages: screenshotResult.total || knownPages,
+          pdfOcrDesiredWidth: PDF_OCR_DESIRED_WIDTH,
+          pdfOcrPageResults: pageResults,
+        },
+      }
+    }
+
+    if ((shouldUseVisionOcr() || shouldUseVisionOcrFallback()) && (!shouldUseBaiduMedicalOcr() || shouldUseVisionOcrFallback())) {
       for (const page of pages) {
         try {
           const visionResult = await recognizeOpenaiVisionImage(input, {
@@ -257,11 +330,11 @@ const parsePdfScreenshots = async (
       }
     }
 
-    const visionText = pageTexts.join('\n\n').trim()
+    visionText = pageTexts.join('\n\n').trim()
     if (isUsefulPdfText(visionText, input.originalName)) {
       return {
         text: visionText,
-        parser: 'pdf-screenshot+openai-vision',
+        parser: shouldUseBaiduMedicalOcr() ? 'pdf-screenshot+baidu-medical-ocr+openai-vision' : 'pdf-screenshot+openai-vision',
         metadata: {
           pdfOcrPagesAttempted: pages.length,
           pdfOcrTotalPages: screenshotResult.total || knownPages,
@@ -274,7 +347,7 @@ const parsePdfScreenshots = async (
     if (!shouldUseTesseractFallback()) {
       return {
         text: visionText,
-        parser: 'pdf-screenshot+openai-vision',
+        parser: shouldUseBaiduMedicalOcr() ? 'pdf-screenshot+baidu-medical-ocr' : 'pdf-screenshot+openai-vision',
         metadata: {
           pdfOcrPagesAttempted: pages.length,
           pdfOcrTotalPages: screenshotResult.total || knownPages,

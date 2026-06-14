@@ -123,18 +123,18 @@ const basePatient = {
 
 const chiefComplaint = '右侧乳腺癌术后复查，上传病理、PET/CT、骨扫描、影像和检查报告图片，想确认是否存在复发或转移信号，以及下一步来华就医评估和治疗路径。'
 
-const buildFreeInput = (uploadedFiles: ProfessionalUploadedFile[], parsedFiles: ProfessionalParsedFile[]) => reportSubmissionSchema.parse({
+const buildFreeInput = () => reportSubmissionSchema.parse({
   locale: 'zh',
   basicInfo: {
     ...basePatient,
     idType: 'passport',
     idNumber: 'P1234567',
     visitPurpose: 'breast_cancer',
-    chiefComplaint,
+    chiefComplaint: '右侧乳腺癌术后复查，想了解来华就医评估、治疗路径、费用和准备材料。',
   },
   selectedRegions: ['north_america', 'europe', 'southeast_asia', 'japan_korea'],
-  uploadedFiles,
-  parsedFiles,
+  uploadedFiles: [],
+  parsedFiles: [],
 })
 
 const buildProfessionalInput = (uploadedFiles: ProfessionalUploadedFile[], parsedFiles: ProfessionalParsedFile[]) => professionalReportSubmissionSchema.parse({
@@ -182,7 +182,7 @@ const run = async () => {
   const uploadedFiles = uploadedWithPaths.map(({ absolutePath: _absolutePath, ...file }) => file)
   const medicalFacts = collectMedicalFactBundle(parsedFiles)
   console.log('[Report] generating free report')
-  const freeReport = await generateReport(buildFreeInput(uploadedFiles, parsedFiles), 'REAL-UPLOAD-FREE-PREVIEW')
+  const freeReport = await generateReport(buildFreeInput(), 'REAL-UPLOAD-FREE-PREVIEW')
   console.log('[Report] generating professional report')
   const professionalReport = await generateProfessionalReport(buildProfessionalInput(uploadedFiles, parsedFiles), 'REAL-UPLOAD-PRO-PREVIEW')
   const recordsSection = freeReport.layoutSections?.find((section) => section.key === 'records')
@@ -212,8 +212,10 @@ const run = async () => {
     '## 模拟用户输入',
     '',
     `- 科室/目的：乳腺癌`,
-    `- 主诉：${chiefComplaint}`,
-    `- 上传文件：${uploadedFiles.map((file) => file.originalName).join('、')}`,
+    `- 简易报告主诉：右侧乳腺癌术后复查，想了解来华就医评估、治疗路径、费用和准备材料。`,
+    `- 专业报告主诉：${chiefComplaint}`,
+    `- 简易报告上传文件：无`,
+    `- 专业报告上传文件：${uploadedFiles.map((file) => file.originalName).join('、')}`,
     '',
     '## OCR 与结构化识别',
     '',
@@ -249,6 +251,7 @@ const run = async () => {
   lines.push('')
   if (recordsSection) {
     lines.push('### 上传资料解读')
+    lines.push('- 异常：简易报告不应包含上传资料解读，请检查 free report 输入或生成器边界。')
     lines.push(`- ${recordsSection.summary || ''}`)
     lines.push(...renderBlocks(recordsSection.blocks as Array<{ title?: string; description?: string; items?: string[] }>))
   }
@@ -317,6 +320,7 @@ const run = async () => {
       reportType: getMedicalFacts(file)?.reportType,
     })),
     freeGeneratedBy: freeReport.generatedBy,
+    freeUploadedImages: 0,
     professionalGeneratedBy: professionalReport.generatedBy,
     outputJsonPath,
     outputMdPath,
