@@ -30,7 +30,7 @@ export const config = {
   medicalLlmApiKey: process.env.MEDICAL_LLM_API_KEY || '',
   medicalLlmBaseUrl: (process.env.MEDICAL_LLM_BASE_URL || 'https://api.ant-ling.com/v1').replace(/\/$/, ''),
   medicalLlmModel: process.env.MEDICAL_LLM_MODEL || 'AntAngelMed',
-  medicalLlmTimeoutMs: Number(process.env.MEDICAL_LLM_TIMEOUT_MS || process.env.OPENAI_REPORT_TIMEOUT_MS || process.env.OPENAI_TIMEOUT_MS || 300000),
+  medicalLlmTimeoutMs: Number(process.env.MEDICAL_LLM_TIMEOUT_MS || process.env.OPENAI_REPORT_TIMEOUT_MS || process.env.OPENAI_TIMEOUT_MS || 600000),
   medicalLlmStream: process.env.MEDICAL_LLM_STREAM !== 'false',
   medicalLlmResponseFormat: process.env.MEDICAL_LLM_RESPONSE_FORMAT || 'json_object',
   medicalLlmStrictReports: process.env.MEDICAL_LLM_STRICT_REPORTS !== 'false',
