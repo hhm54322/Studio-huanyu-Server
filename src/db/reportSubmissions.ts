@@ -17,6 +17,9 @@ export type ReportSubmissionRow = {
   city: string
   preferred_language: string
   visit_purpose: string
+  care_need: string
+  care_need_other: string
+  expected_treatment_time: string
   chief_complaint: string
   selected_regions: string[]
   uploaded_files: unknown[]
@@ -52,12 +55,13 @@ export const createReportSubmission = async (
     INSERT INTO report_submissions (
       submission_no, locale, full_name, gender, date_of_birth, nationality,
       id_type, id_number, phone, email, city, preferred_language, visit_purpose,
-      chief_complaint, selected_regions, uploaded_files, parsed_files, user_agent, ip_hash
+      care_need, care_need_other, expected_treatment_time, chief_complaint,
+      selected_regions, uploaded_files, parsed_files, user_agent, ip_hash
     )
     VALUES (
       $1, $2, $3, $4, $5, $6,
       $7, NULLIF($8, ''), NULLIF($9, ''), $10, $11, $12, $13,
-      $14, $15::jsonb, $16::jsonb, $17::jsonb, $18, $19
+      $14, $15, $16, $17, $18::jsonb, $19::jsonb, $20::jsonb, $21, $22
     )
     RETURNING id, submission_no, report_status, created_at
     `,
@@ -75,6 +79,9 @@ export const createReportSubmission = async (
       basicInfo.city,
       basicInfo.preferredLanguage,
       basicInfo.visitPurpose,
+      basicInfo.careNeed,
+      basicInfo.careNeedOther,
+      basicInfo.expectedTreatmentTime,
       basicInfo.chiefComplaint,
       JSON.stringify(input.selectedRegions),
       JSON.stringify(input.uploadedFiles),

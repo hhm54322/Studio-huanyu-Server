@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS report_submissions (
   city TEXT NOT NULL DEFAULT '',
   preferred_language TEXT NOT NULL DEFAULT '',
   visit_purpose TEXT NOT NULL,
+  care_need TEXT NOT NULL DEFAULT '',
+  care_need_other TEXT NOT NULL DEFAULT '',
+  expected_treatment_time TEXT NOT NULL DEFAULT '',
   chief_complaint TEXT NOT NULL DEFAULT '',
   selected_regions JSONB NOT NULL DEFAULT '[]'::jsonb,
   uploaded_files JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -45,11 +48,14 @@ CREATE TABLE IF NOT EXISTS professional_report_submissions (
   gender TEXT NOT NULL,
   date_of_birth DATE,
   nationality TEXT NOT NULL DEFAULT '',
-  phone TEXT NOT NULL,
+  phone TEXT,
   email TEXT NOT NULL DEFAULT '',
   city TEXT NOT NULL DEFAULT '',
   preferred_language TEXT NOT NULL DEFAULT '',
   visit_purpose TEXT NOT NULL,
+  care_need TEXT NOT NULL DEFAULT '',
+  care_need_other TEXT NOT NULL DEFAULT '',
+  expected_treatment_time TEXT NOT NULL DEFAULT '',
   diagnosis TEXT NOT NULL DEFAULT '',
   stage TEXT NOT NULL DEFAULT '',
   chief_complaint TEXT NOT NULL DEFAULT '',
@@ -92,7 +98,16 @@ ALTER TABLE report_submissions
 
 ALTER TABLE report_submissions
   ADD COLUMN IF NOT EXISTS uploaded_files JSONB NOT NULL DEFAULT '[]'::jsonb,
-  ADD COLUMN IF NOT EXISTS parsed_files JSONB NOT NULL DEFAULT '[]'::jsonb;
+  ADD COLUMN IF NOT EXISTS parsed_files JSONB NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS care_need TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS care_need_other TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS expected_treatment_time TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE professional_report_submissions
+  ALTER COLUMN phone DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS care_need TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS care_need_other TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS expected_treatment_time TEXT NOT NULL DEFAULT '';
 
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$

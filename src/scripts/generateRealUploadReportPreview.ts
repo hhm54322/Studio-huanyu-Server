@@ -19,6 +19,21 @@ const outputDir = path.resolve(process.cwd(), 'exports')
 const outputJsonPath = path.join(outputDir, 'real-upload-report-preview.json')
 const outputMdPath = path.join(outputDir, 'real-upload-report-preview.md')
 const reuseOcr = process.argv.includes('--reuse-ocr')
+const reuseFree = process.argv.includes('--reuse-free')
+
+type PhaseDurations = Record<string, number>
+type FreeReportResult = Awaited<ReturnType<typeof generateReport>>
+
+const formatDuration = (durationMs: number) => {
+  const seconds = durationMs / 1000
+  return seconds >= 60 ? `${seconds.toFixed(1)}s (${(seconds / 60).toFixed(1)}min)` : `${seconds.toFixed(1)}s`
+}
+
+const renderPhaseDurations = (phaseDurations: PhaseDurations) => {
+  const entries = Object.entries(phaseDurations)
+  if (!entries.length) return ['- 暂无阶段耗时']
+  return entries.map(([phase, durationMs]) => `- ${phase}：${formatDuration(durationMs)}`)
+}
 
 const compact = (value: string | undefined, max = 260) => {
   const text = String(value || '').replace(/\s+/g, ' ').trim()
@@ -110,6 +125,28 @@ const loadCachedParsedFiles = async (files: Array<ProfessionalUploadedFile & { a
   return null
 }
 
+const loadCachedFreeReport = async () => {
+  if (!reuseFree) return null
+
+  try {
+    const payload = JSON.parse(await readFile(outputJsonPath, 'utf8')) as {
+      freeReport?: FreeReportResult
+      timings?: {
+        freeTotalMs?: number
+        freePhaseDurationsMs?: PhaseDurations
+      }
+    }
+    if (payload.freeReport?.generatedBy) {
+      console.log(`[Report] reusing free report from ${outputJsonPath}`)
+      return payload
+    }
+  } catch {
+    console.log('[Report] no cached free report found; generating free report')
+  }
+
+  return null
+}
+
 const basePatient = {
   fullName: 'Real Upload Preview Patient',
   gender: 'female' as const,
@@ -130,6 +167,9 @@ const buildFreeInput = () => reportSubmissionSchema.parse({
     idType: 'passport',
     idNumber: 'P1234567',
     visitPurpose: 'breast_cancer',
+    careNeed: 'second_opinion',
+    careNeedOther: '',
+    expectedTreatmentTime: '1_to_3_months',
     chiefComplaint: '右侧乳腺癌术后复查，想了解来华就医评估、治疗路径、费用和准备材料。',
   },
   selectedRegions: ['north_america', 'europe', 'southeast_asia', 'japan_korea'],
@@ -142,6 +182,9 @@ const buildProfessionalInput = (uploadedFiles: ProfessionalUploadedFile[], parse
   patient: basePatient,
   medical: {
     visitPurpose: 'breast_cancer',
+    careNeed: 'second_opinion',
+    careNeedOther: '',
+    expectedTreatmentTime: '1_to_3_months',
     diagnosis: '右侧乳腺癌术后复查，疑似复发/转移需确认',
     stage: '上传资料中包含病理、PET/CT和复查影像，需按原始资料复核分期和转移情况',
     chiefComplaint,
@@ -174,17 +217,54 @@ const renderBlocks = (blocks: Array<{ title?: string; description?: string; item
 )
 
 const run = async () => {
+  const totalStartedAt = Date.now()
+  const timings = {
+    scanImagesMs: 0,
+    ocrMs: 0,
+    freeTotalMs: 0,
+    freePhaseDurationsMs: {} as PhaseDurations,
+    professionalTotalMs: 0,
+    professionalPhaseDurationsMs: {} as PhaseDurations,
+    totalMs: 0,
+  }
+
   await mkdir(outputDir, { recursive: true })
+  const scanStartedAt = Date.now()
   const uploadedWithPaths = await buildUploadedFiles()
+  timings.scanImagesMs = Date.now() - scanStartedAt
   if (!uploadedWithPaths.length) throw new Error(`No image files found in ${reportDir}`)
 
+  const ocrStartedAt = Date.now()
   const parsedFiles = await loadCachedParsedFiles(uploadedWithPaths) || await parseFiles(uploadedWithPaths)
+  timings.ocrMs = Date.now() - ocrStartedAt
   const uploadedFiles = uploadedWithPaths.map(({ absolutePath: _absolutePath, ...file }) => file)
   const medicalFacts = collectMedicalFactBundle(parsedFiles)
-  console.log('[Report] generating free report')
-  const freeReport = await generateReport(buildFreeInput(), 'REAL-UPLOAD-FREE-PREVIEW')
+  const cachedFreePayload = await loadCachedFreeReport()
+  let freeReport: FreeReportResult
+  const reusedFreeReport = Boolean(cachedFreePayload?.freeReport)
+  if (cachedFreePayload?.freeReport) {
+    freeReport = cachedFreePayload.freeReport
+    timings.freeTotalMs = cachedFreePayload.timings?.freeTotalMs || 0
+    timings.freePhaseDurationsMs = cachedFreePayload.timings?.freePhaseDurationsMs || {}
+  } else {
+    console.log('[Report] generating free report')
+    const freeStartedAt = Date.now()
+    freeReport = await generateReport(buildFreeInput(), 'REAL-UPLOAD-FREE-PREVIEW', {
+      onPhaseDuration: (phase, durationMs) => {
+        timings.freePhaseDurationsMs[phase] = durationMs
+      },
+    })
+    timings.freeTotalMs = Date.now() - freeStartedAt
+  }
   console.log('[Report] generating professional report')
-  const professionalReport = await generateProfessionalReport(buildProfessionalInput(uploadedFiles, parsedFiles), 'REAL-UPLOAD-PRO-PREVIEW')
+  const professionalStartedAt = Date.now()
+  const professionalReport = await generateProfessionalReport(buildProfessionalInput(uploadedFiles, parsedFiles), 'REAL-UPLOAD-PRO-PREVIEW', {
+    onPhaseDuration: (phase, durationMs) => {
+      timings.professionalPhaseDurationsMs[phase] = durationMs
+    },
+  })
+  timings.professionalTotalMs = Date.now() - professionalStartedAt
+  timings.totalMs = Date.now() - totalStartedAt
   const recordsSection = freeReport.layoutSections?.find((section) => section.key === 'records')
   const recordsTab = professionalReport.tabs?.find((tab) => tab.key === 'records')
 
@@ -194,6 +274,8 @@ const run = async () => {
     uploadedFiles,
     parsedFiles,
     medicalFacts,
+    timings,
+    reusedFreeReport,
     freeReport,
     professionalReport,
   }
@@ -208,6 +290,21 @@ const run = async () => {
     `上传图片数：${uploadedFiles.length}`,
     `简易报告生成来源：${freeReport.generatedBy}`,
     `专业报告生成来源：${professionalReport.generatedBy}`,
+    `简易报告是否复用缓存：${reusedFreeReport ? '是' : '否'}`,
+    '',
+    '## 生成耗时',
+    '',
+    `- 总耗时：${formatDuration(timings.totalMs)}`,
+    `- 扫描上传图片：${formatDuration(timings.scanImagesMs)}`,
+    `- OCR/读取缓存：${formatDuration(timings.ocrMs)}`,
+    `- 简易报告总耗时：${formatDuration(timings.freeTotalMs)}`,
+    `- 专业报告总耗时：${formatDuration(timings.professionalTotalMs)}`,
+    '',
+    '### 简易报告阶段',
+    ...renderPhaseDurations(timings.freePhaseDurationsMs),
+    '',
+    '### 专业报告阶段',
+    ...renderPhaseDurations(timings.professionalPhaseDurationsMs),
     '',
     '## 模拟用户输入',
     '',
@@ -320,8 +417,10 @@ const run = async () => {
       reportType: getMedicalFacts(file)?.reportType,
     })),
     freeGeneratedBy: freeReport.generatedBy,
+    reusedFreeReport,
     freeUploadedImages: 0,
     professionalGeneratedBy: professionalReport.generatedBy,
+    timings,
     outputJsonPath,
     outputMdPath,
   }, null, 2))

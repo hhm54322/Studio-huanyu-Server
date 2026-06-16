@@ -5,6 +5,30 @@ import { config } from '../config.js'
 export type ReportGenerationMode = 'free' | 'professional'
 export type ReportGenerationStatus = 'started' | 'generated' | 'failed'
 
+export type ParsedFileMetric = {
+  originalName?: string
+  mimeType?: string
+  size?: number
+  status?: string
+  parser?: string
+  textLength?: number
+  summaryLength?: number
+  uploadDurationMs?: number
+  parseDurationMs?: number
+  durationMs?: number
+  ocrProvider?: string
+  ocrEndpoint?: string
+  ocrAttempts?: Array<{
+    parser?: string
+    endpoint?: string
+    textLength?: number
+    durationMs?: number
+  }>
+  pdfOcrPagesAttempted?: number
+  pdfOcrTotalPages?: number
+  error?: string
+}
+
 export type ReportGenerationEvent = {
   timestamp: string
   event: 'generation_started' | 'generation_completed'
@@ -19,6 +43,9 @@ export type ReportGenerationEvent = {
   uploadedFileCount?: number
   parsedFileCount?: number
   parsedFileStatuses?: Record<string, number>
+  uploadedTotalBytes?: number
+  phaseDurationsMs?: Record<string, number>
+  parsedFileMetrics?: ParsedFileMetric[]
   generatedBy?: 'llm' | 'rules'
   errorCode?: string
   errorMessage?: string

@@ -34,6 +34,14 @@ const average = (values: number[]) => (
   values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0
 )
 
+const formatMs = (value: number) => {
+  if (!value) return '0ms'
+  if (value < 1000) return `${value}ms`
+  const seconds = value / 1000
+  if (seconds < 60) return `${seconds.toFixed(1)}s`
+  return `${(seconds / 60).toFixed(1)}m`
+}
+
 const groupBy = <T>(items: T[], getKey: (item: T) => string) => items.reduce<Record<string, T[]>>((acc, item) => {
   const key = getKey(item)
   acc[key] = acc[key] || []
@@ -49,6 +57,51 @@ const countBy = <T>(items: T[], getKey: (item: T) => string) => {
   }, {})
   return Object.entries(counts).sort((a, b) => b[1] - a[1])
 }
+
+const summarizePhaseDurations = (events: ReportGenerationEvent[]) => {
+  const phaseValues = new Map<string, number[]>()
+  for (const event of events) {
+    for (const [phase, duration] of Object.entries(event.phaseDurationsMs || {})) {
+      if (typeof duration !== 'number' || duration <= 0) continue
+      phaseValues.set(phase, [...(phaseValues.get(phase) || []), duration])
+    }
+  }
+
+  return Array.from(phaseValues.entries())
+    .map(([phase, values]) => ({
+      phase,
+      count: values.length,
+      avg: average(values),
+      p95: percentile(values, 95),
+      max: Math.max(...values),
+      avgText: formatMs(average(values)),
+      p95Text: formatMs(percentile(values, 95)),
+      maxText: formatMs(Math.max(...values)),
+    }))
+    .sort((left, right) => right.p95 - left.p95)
+}
+
+const summarizeSlowFiles = (events: ReportGenerationEvent[], limit = 12) => events
+  .flatMap((event) => (event.parsedFileMetrics || []).map((file) => ({
+    time: event.timestamp,
+    submissionNo: event.submissionNo || '',
+    name: file.originalName || '',
+    mimeType: file.mimeType || '',
+    sizeKB: file.size ? Math.round(file.size / 1024) : 0,
+    status: file.status || '',
+    parser: file.parser || '',
+    durationMs: file.durationMs || file.parseDurationMs || 0,
+    uploadMs: file.uploadDurationMs || 0,
+    parseMs: file.parseDurationMs || 0,
+    textLength: file.textLength || 0,
+    pages: file.pdfOcrPagesAttempted || '',
+    attempts: (file.ocrAttempts || []).map((attempt) => (
+      `${attempt.parser || ''}:${formatMs(attempt.durationMs || 0)}`
+    )).filter(Boolean).join(' | '),
+    error: file.error || '',
+  })))
+  .sort((left, right) => right.durationMs - left.durationMs)
+  .slice(0, limit)
 
 const summarizeGroup = (mode: ReportGenerationMode | 'all', events: ReportGenerationEvent[]) => {
   const completed = events.filter((event) => event.event === 'generation_completed')
@@ -119,6 +172,8 @@ try {
       summary: summaryRows,
       failureReasons: countBy(failures, (event) => event.errorCode || 'UNKNOWN').map(([errorCode, count]) => ({ errorCode, count })),
       failuresByVisitPurpose: countBy(failures, (event) => event.visitPurpose || 'unknown').map(([visitPurpose, count]) => ({ visitPurpose, count })),
+      phaseDurations: summarizePhaseDurations(completed),
+      slowFiles: summarizeSlowFiles(completed, Number(getArg('--slow-files') || 12)),
       recentFailures: failures.slice(0, recentFailuresLimit),
     }, null, 2))
   } else if (format === 'csv') {
@@ -126,6 +181,38 @@ try {
   } else {
     console.log('Report generation summary')
     console.table(summaryRows)
+
+    const phaseDurations = summarizePhaseDurations(completed)
+    if (phaseDurations.length) {
+      console.log('\nPhase durations')
+      console.table(phaseDurations.map((row) => ({
+        phase: row.phase,
+        count: row.count,
+        avg: row.avgText,
+        p95: row.p95Text,
+        max: row.maxText,
+      })))
+    }
+
+    const slowFiles = summarizeSlowFiles(completed, Number(getArg('--slow-files') || 12))
+    if (slowFiles.length) {
+      console.log('\nSlow uploaded files')
+      console.table(slowFiles.map((row) => ({
+        time: row.time,
+        submissionNo: row.submissionNo,
+        name: row.name,
+        sizeKB: row.sizeKB,
+        status: row.status,
+        parser: row.parser,
+        duration: formatMs(row.durationMs),
+        upload: formatMs(row.uploadMs),
+        parse: formatMs(row.parseMs),
+        textLength: row.textLength,
+        pages: row.pages,
+        attempts: row.attempts,
+        error: row.error,
+      })))
+    }
 
     if (failures.length) {
       console.log('\nFailure reasons')

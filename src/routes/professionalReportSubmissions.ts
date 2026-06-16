@@ -14,6 +14,7 @@ import {
 import { parseUploadedFile } from '../report/fileParser.js'
 import {
   getParsedFileStatusCounts,
+  type ParsedFileMetric,
   type ReportGenerationEvent,
   writeReportGenerationEvent,
 } from '../report/generationEventLog.js'
@@ -34,6 +35,9 @@ type GenerationLogMeta = Pick<
   | 'uploadedFileCount'
   | 'parsedFileCount'
   | 'parsedFileStatuses'
+  | 'uploadedTotalBytes'
+  | 'phaseDurationsMs'
+  | 'parsedFileMetrics'
 >
 
 const allowedMimeTypes = new Set([
@@ -84,20 +88,82 @@ export const saveReportUpload = async (part: MultipartFile, folder: string): Pro
   }
 }
 
-const parseMultipartSubmission = async (request: FastifyRequest) => {
+const sanitizeMetricText = (value: unknown, limit = 180) => String(value ?? '')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .slice(0, limit)
+
+const getParsedFileMetric = (
+  uploadedFile: ProfessionalUploadedFile,
+  parsedFile: ProfessionalParsedFile,
+  uploadDurationMs: number,
+  parseDurationMs: number,
+): ParsedFileMetric => {
+  const metadata = parsedFile.metadata || {}
+  const attempts = Array.isArray(metadata.attempts) ? metadata.attempts : []
+
+  return {
+    originalName: uploadedFile.originalName,
+    mimeType: uploadedFile.mimeType,
+    size: uploadedFile.size,
+    status: parsedFile.status,
+    parser: parsedFile.parser,
+    textLength: parsedFile.text.length,
+    summaryLength: parsedFile.summary.length,
+    uploadDurationMs,
+    parseDurationMs,
+    durationMs: uploadDurationMs + parseDurationMs,
+    ocrProvider: typeof metadata.provider === 'string' ? metadata.provider : undefined,
+    ocrEndpoint: typeof metadata.endpoint === 'string' ? metadata.endpoint : undefined,
+    ocrAttempts: attempts.slice(0, 8).map((attempt) => {
+      const item = attempt as Record<string, unknown>
+      return {
+        parser: typeof item.parser === 'string' ? item.parser : undefined,
+        endpoint: typeof item.endpoint === 'string' ? item.endpoint : undefined,
+        textLength: typeof item.textLength === 'number' ? item.textLength : undefined,
+        durationMs: typeof item.durationMs === 'number' ? item.durationMs : undefined,
+      }
+    }),
+    pdfOcrPagesAttempted: typeof metadata.pdfOcrPagesAttempted === 'number' ? metadata.pdfOcrPagesAttempted : undefined,
+    pdfOcrTotalPages: typeof metadata.pdfOcrTotalPages === 'number' ? metadata.pdfOcrTotalPages : undefined,
+    error: parsedFile.error ? sanitizeMetricText(parsedFile.error) : undefined,
+  }
+}
+
+type MultipartParseResult = {
+  input: ReturnType<typeof professionalReportSubmissionSchema.parse>
+  phaseDurationsMs: Record<string, number>
+  parsedFileMetrics: ParsedFileMetric[]
+}
+
+const parseMultipartSubmission = async (request: FastifyRequest): Promise<MultipartParseResult> => {
   const fields: Record<string, string> = {}
   const tempSubmissionNo = `upload_${Date.now()}_${Math.random().toString(36).slice(2)}`
   const uploadedFiles: ProfessionalUploadedFile[] = []
   const parsedFiles: ProfessionalParsedFile[] = []
+  const parsedFileMetrics: ParsedFileMetric[] = []
+  const phaseDurationsMs: Record<string, number> = {
+    uploadSave: 0,
+    fileParse: 0,
+  }
 
   for await (const part of request.parts()) {
     if (isMultipartFile(part)) {
+      const uploadStartedAt = Date.now()
       const uploadedFile = await saveReportUpload(part, `professional-reports/${tempSubmissionNo}`)
+      const uploadDurationMs = Date.now() - uploadStartedAt
+      phaseDurationsMs.uploadSave += uploadDurationMs
       uploadedFiles.push(uploadedFile)
-      parsedFiles.push(await parseUploadedFile({
+
+      const parseStartedAt = Date.now()
+      const parsedFile = await parseUploadedFile({
         ...uploadedFile,
         absolutePath: path.resolve(uploadedFile.relativePath),
-      }))
+      })
+      const parseDurationMs = Date.now() - parseStartedAt
+      phaseDurationsMs.fileParse += parseDurationMs
+      parsedFiles.push(parsedFile)
+      parsedFileMetrics.push(getParsedFileMetric(uploadedFile, parsedFile, uploadDurationMs, parseDurationMs))
     } else {
       fields[part.fieldname] = getFieldValue(part.value)
     }
@@ -105,17 +171,21 @@ const parseMultipartSubmission = async (request: FastifyRequest) => {
 
   const rawPayload = fields.payload ? JSON.parse(fields.payload) : fields
 
-  return professionalReportSubmissionSchema.parse({
-    ...rawPayload,
-    uploadedFiles: [
-      ...(Array.isArray(rawPayload.uploadedFiles) ? rawPayload.uploadedFiles : []),
-      ...uploadedFiles,
-    ],
-    parsedFiles: [
-      ...(Array.isArray(rawPayload.parsedFiles) ? rawPayload.parsedFiles : []),
-      ...parsedFiles,
-    ],
-  })
+  return {
+    input: professionalReportSubmissionSchema.parse({
+      ...rawPayload,
+      uploadedFiles: [
+        ...(Array.isArray(rawPayload.uploadedFiles) ? rawPayload.uploadedFiles : []),
+        ...uploadedFiles,
+      ],
+      parsedFiles: [
+        ...(Array.isArray(rawPayload.parsedFiles) ? rawPayload.parsedFiles : []),
+        ...parsedFiles,
+      ],
+    }),
+    phaseDurationsMs,
+    parsedFileMetrics,
+  }
 }
 
 export const registerProfessionalReportSubmissionRoutes = async (app: FastifyInstance) => {
@@ -124,9 +194,18 @@ export const registerProfessionalReportSubmissionRoutes = async (app: FastifyIns
     let logMeta: Partial<GenerationLogMeta> = {}
     const startedAt = Date.now()
     try {
-      const input = request.isMultipart()
+      const parseStartedAt = Date.now()
+      const multipartResult = request.isMultipart()
         ? await parseMultipartSubmission(request)
+        : null
+      const input = multipartResult
+        ? multipartResult.input
         : professionalReportSubmissionSchema.parse(request.body)
+      const parseRequestDurationMs = Date.now() - parseStartedAt
+      const phaseDurationsMs: Record<string, number> = {
+        requestParse: parseRequestDurationMs,
+        ...(multipartResult?.phaseDurationsMs || {}),
+      }
       logMeta = {
         locale: input.locale,
         visitPurpose: input.medical.visitPurpose,
@@ -135,14 +214,19 @@ export const registerProfessionalReportSubmissionRoutes = async (app: FastifyIns
         uploadedFileCount: input.uploadedFiles.length,
         parsedFileCount: input.parsedFiles.length,
         parsedFileStatuses: getParsedFileStatusCounts(input.parsedFiles),
+        uploadedTotalBytes: input.uploadedFiles.reduce((sum, file) => sum + file.size, 0),
+        phaseDurationsMs,
+        parsedFileMetrics: multipartResult?.parsedFileMetrics,
       }
 
+      const dbCreateStartedAt = Date.now()
       const created = await createProfessionalReportSubmission(input, {
         userAgent: request.headers['user-agent'],
         ip: request.ip,
       })
       createdSubmissionNo = created.submission_no
       await updateProfessionalReportSubmissionResult(created.submission_no, 'generating', null)
+      phaseDurationsMs.dbCreate = Date.now() - dbCreateStartedAt
       await writeReportGenerationEvent({
         event: 'generation_started',
         mode: 'professional',
@@ -151,8 +235,20 @@ export const registerProfessionalReportSubmissionRoutes = async (app: FastifyIns
         ...logMeta,
       }).catch((logError) => request.log.error(logError))
 
-      const report = await generateProfessionalReport(input, created.submission_no)
+      const generationStartedAt = Date.now()
+      let report
+      try {
+        report = await generateProfessionalReport(input, created.submission_no, {
+          onPhaseDuration: (phase, durationMs) => {
+            phaseDurationsMs[phase] = durationMs
+          },
+        })
+      } finally {
+        phaseDurationsMs.reportGeneration = Date.now() - generationStartedAt
+      }
+      const dbUpdateStartedAt = Date.now()
       await updateProfessionalReportSubmissionResult(created.submission_no, 'generated', report)
+      phaseDurationsMs.dbUpdate = Date.now() - dbUpdateStartedAt
       await writeReportGenerationEvent({
         event: 'generation_completed',
         mode: 'professional',

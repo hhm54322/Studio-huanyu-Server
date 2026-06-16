@@ -43,6 +43,10 @@ MEDICAL_LLM_PROVIDER=ant_ling
 MEDICAL_LLM_API_KEY=your-ant-ling-api-key
 MEDICAL_LLM_BASE_URL=https://api.ant-ling.com/v1
 MEDICAL_LLM_MODEL=AntAngelMed
+HTTP_REQUEST_TIMEOUT_MS=600000
+OPENAI_TIMEOUT_MS=600000
+OPENAI_REPORT_TIMEOUT_MS=600000
+OPENAI_VISION_TIMEOUT_MS=600000
 MEDICAL_LLM_TIMEOUT_MS=600000
 MEDICAL_LLM_STREAM=true
 MEDICAL_LLM_RESPONSE_FORMAT=json_object
@@ -52,7 +56,7 @@ REPORT_GENERATION_LOG_DIR=logs
 
 If `MEDICAL_LLM_API_KEY` is empty, report generation falls back to the existing `OPENAI_*` OpenAI-compatible report model. OCR is independent: backend defaults route uploaded medical records to Baidu OCR; production still needs `BAIDU_OCR_API_KEY` and `BAIDU_OCR_SECRET_KEY` in `.env`. Set `OCR_FALLBACK_PROVIDER=openai` only if you intentionally want oversized images to fall back to the old vision path.
 
-`MEDICAL_LLM_STRICT_REPORTS` defaults to `true`. In strict mode, simple and professional report generation fails visibly if the medical LLM is unavailable, returns invalid JSON, or does not pass completeness/fact-alignment checks. Set it to `false` only for local development if you intentionally want the rule-based baseline to be returned.
+`MEDICAL_LLM_STRICT_REPORTS` is kept in generation logs for operational visibility. Report content no longer falls back to the old rule-based hospital/fee/treatment baseline when medical LLM output is missing or invalid; affected sections render user-facing "资料不足/暂不估算" guidance instead, while logs keep the failure reason for debugging.
 
 `OCR_PROVIDER` supports:
 
@@ -87,4 +91,4 @@ npm run submissions:export -- --from 2026-05-01 --to 2026-05-10
 npm run submissions:export -- --format json
 ```
 
-Report generation events are written as JSONL files under `REPORT_GENERATION_LOG_DIR`, one file per day, for example `logs/report-generation-2026-06-11.jsonl`. The event log is intentionally non-sensitive: it records mode, submission number, visit purpose, upload counts, parser statuses, duration, result, provider/model, and failure code/message, but not patient identity fields or raw medical record text.
+Report generation events are written as JSONL files under `REPORT_GENERATION_LOG_DIR`, one file per day, for example `logs/report-generation-2026-06-11.jsonl`. The event log is intentionally non-sensitive: it records mode, submission number, visit purpose, upload counts, parser statuses, phase durations, per-file OCR/parser timing, result, provider/model, and failure code/message, but not patient identity fields or raw medical record text.

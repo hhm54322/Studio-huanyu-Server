@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { careNeedValues, expectedTreatmentTimeValues } from '../report/patientIntent.js'
 
 const supportedLocales = ['zh', 'en', 'id', 'ru', 'mn'] as const
 const genders = ['male', 'female', 'other'] as const
@@ -43,13 +44,16 @@ export const professionalReportSubmissionSchema = z.object({
       !value || (/^\d{4}-\d{2}-\d{2}$/.test(value) && isValidBirthDate(value))
     ), 'Invalid date of birth'),
     nationality: z.string().trim().max(80).optional().default(''),
-    phone: z.string().trim().min(7).max(40).refine((value) => phoneRegex.test(value), 'Invalid phone number'),
-    email: z.string().trim().max(160).optional().default('').refine((value) => !value || z.string().email().safeParse(value).success, 'Invalid email'),
+    phone: z.string().trim().max(40).optional().default('').refine((value) => !value || phoneRegex.test(value), 'Invalid phone number'),
+    email: z.string().trim().min(1).max(160).refine((value) => z.string().email().safeParse(value).success, 'Invalid email'),
     city: z.string().trim().max(120).optional().default(''),
     preferredLanguage: z.string().trim().max(40).optional().default(''),
   }),
   medical: z.object({
     visitPurpose: z.string().trim().min(1).max(80),
+    careNeed: z.enum(careNeedValues).or(z.literal('')).optional().default(''),
+    careNeedOther: z.string().trim().max(300).optional().default(''),
+    expectedTreatmentTime: z.enum(expectedTreatmentTimeValues).or(z.literal('')).optional().default(''),
     diagnosis: z.string().trim().max(160).optional().default(''),
     stage: z.string().trim().max(160).optional().default(''),
     chiefComplaint: z.string().trim().min(6).max(2000),
@@ -71,6 +75,14 @@ export const professionalReportSubmissionSchema = z.object({
   uploadedFiles: z.array(professionalUploadedFileSchema).max(20).default([]),
   parsedFiles: z.array(professionalParsedFileSchema).max(20).default([]),
 }).superRefine((value, ctx) => {
+  if (value.medical.careNeed === 'other' && value.medical.careNeedOther.trim().length < 2) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['medical', 'careNeedOther'],
+      message: 'Care need details are required',
+    })
+  }
+
   if (value.uploadedFiles.length || value.parsedFiles.length) return
 
   ctx.addIssue({

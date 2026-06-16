@@ -24,6 +24,8 @@ export type KnowledgeRegion = {
   follow: string
 }
 
+type PackageFeatureStatus = 'included' | 'excluded' | 'emphasis'
+
 export const diseases: Record<string, KnowledgeDisease> = {
   breast_cancer: {
     label: '乳腺癌',
@@ -322,26 +324,79 @@ export const regions: Record<string, KnowledgeRegion[]> = {
   ],
 }
 
-export const packages = [
+export const packages: Array<{
+  name: string
+  subtitle: string
+  price: string
+  originalPrice: string
+  badge?: string
+  cta: string
+  icon: string
+  highlight: boolean
+  features: string[]
+  featureDetails: Array<{ label: string; status: PackageFeatureStatus }>
+  footnote: string
+}> = [
   {
-    name: '书面评估基础包',
-    price: '60💲',
+    name: '基础评估包 / Basic',
+    subtitle: '适合已有资料、先获取书面方向判断',
+    price: '$56',
+    originalPrice: '￥399',
+    cta: '选择基础包 / Choose Basic',
     icon: 'FileText',
     highlight: false,
-    features: ['病历整理与归档', '专家智能匹配', '书面初步评估PDF'],
+    features: ['副主任医师审阅病历', '完整PDF评估报告', 'CT/病理分析解读', '治疗路径方案', '费用明细清单', '治愈率/预后参考', '保险报销建议', '不含视频面诊'],
+    featureDetails: [
+      { label: '副主任医师审阅病历', status: 'included' },
+      { label: '完整PDF评估报告', status: 'included' },
+      { label: 'CT/病理分析解读', status: 'included' },
+      { label: '治疗路径方案', status: 'included' },
+      { label: '费用明细清单', status: 'included' },
+      { label: '治愈率/预后参考', status: 'included' },
+      { label: '保险报销建议', status: 'included' },
+      { label: '不含视频面诊', status: 'excluded' },
+    ],
+    footnote: '适合初步判断方向；若需要医生视频沟通，建议选择标准包。',
   },
   {
-    name: '单次视频面诊标准包',
-    price: '235💲',
+    name: '标准面诊包 / Standard',
+    subtitle: '适合希望与专家视频沟通并获得跟进答疑',
+    price: '$185-$425',
+    originalPrice: '￥1,300-3,000',
+    badge: '最受欢迎 / Most Popular',
+    cta: '选择标准包 / Choose Standard',
     icon: 'Video',
     highlight: true,
-    features: ['专家视频面诊15-30分钟', '书面诊疗总结', '7天内1次跟进答疑'],
+    features: ['包含基础包全部内容', '专家视频面诊30分钟', '7天内跟进答疑', '病历翻译服务', '精准费用到千位', '指定专家推荐', '治疗时间规划'],
+    featureDetails: [
+      { label: '包含基础包全部内容', status: 'included' },
+      { label: '专家视频面诊30分钟', status: 'emphasis' },
+      { label: '7天内跟进答疑', status: 'included' },
+      { label: '病历翻译服务', status: 'included' },
+      { label: '精准费用到千位', status: 'included' },
+      { label: '指定专家推荐', status: 'included' },
+      { label: '治疗时间规划', status: 'included' },
+    ],
+    footnote: '价格因专家级别、病种复杂度和资料量不同而异。',
   },
   {
-    name: '双专家视频面诊深度包',
-    price: '450💲',
+    name: '深度面诊包 / Premium',
+    subtitle: '适合复杂病情、需要多学科联合意见',
+    price: '$425-$1,400',
+    originalPrice: '￥3,000-10,000',
+    cta: '选择深度包 / Choose Premium',
     icon: 'MessageSquare',
     highlight: false,
-    features: ['2位相关科室专家会诊', '综合诊疗报告', '14天内2次跟进答疑'],
+    features: ['包含标准包全部内容', '多学科专家会诊（MDT）', '外科+肿瘤内科+放疗科联合会诊', '14天内跟进答疑', '治疗方案第二意见', '医疗签证邀请函', '防复发随访方案定制'],
+    featureDetails: [
+      { label: '包含标准包全部内容', status: 'included' },
+      { label: '多学科专家会诊（MDT）', status: 'emphasis' },
+      { label: '外科+肿瘤内科+放疗科联合会诊', status: 'included' },
+      { label: '14天内跟进答疑', status: 'included' },
+      { label: '治疗方案第二意见', status: 'included' },
+      { label: '医疗签证邀请函', status: 'included' },
+      { label: '防复发随访方案定制', status: 'included' },
+    ],
+    footnote: '适合疑难病例、复发转移风险评估或跨科室治疗决策。',
   },
 ]

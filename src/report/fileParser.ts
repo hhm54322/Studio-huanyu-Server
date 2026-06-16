@@ -414,18 +414,29 @@ const parseDicomFile = async (input: ParserInput) => {
 }
 
 export const parseUploadedFile = async (input: ParserInput): Promise<ProfessionalParsedFile> => {
+  const startedAt = Date.now()
   const ext = getExtension(input.originalName)
 
   try {
-    if (input.mimeType === 'application/pdf' || ext === '.pdf') return await parsePdfFile(input)
-    if (ext === '.docx') return await parseDocxFile(input)
-    if (input.mimeType.startsWith('text/') || ext === '.txt') return await parseTextFile(input)
-    if (input.mimeType.startsWith('image/') || ['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) return await parseImageFile(input)
-    if (['.dcm', '.dicom'].includes(ext) || input.mimeType === 'application/dicom') return await parseDicomFile(input)
+    let parsed: ProfessionalParsedFile
+    if (input.mimeType === 'application/pdf' || ext === '.pdf') parsed = await parsePdfFile(input)
+    else if (ext === '.docx') parsed = await parseDocxFile(input)
+    else if (input.mimeType.startsWith('text/') || ext === '.txt') parsed = await parseTextFile(input)
+    else if (input.mimeType.startsWith('image/') || ['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) parsed = await parseImageFile(input)
+    else if (['.dcm', '.dicom'].includes(ext) || input.mimeType === 'application/dicom') parsed = await parseDicomFile(input)
+    else parsed = createParsedFile(input, 'none', 'unsupported', '', {}, 'Unsupported file format')
 
-    return createParsedFile(input, 'none', 'unsupported', '', {}, 'Unsupported file format')
+    return {
+      ...parsed,
+      metadata: {
+        ...parsed.metadata,
+        parseDurationMs: Date.now() - startedAt,
+      },
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    return createParsedFile(input, 'auto', 'failed', '', {}, message.slice(0, 300))
+    return createParsedFile(input, 'auto', 'failed', '', {
+      parseDurationMs: Date.now() - startedAt,
+    }, message.slice(0, 300))
   }
 }

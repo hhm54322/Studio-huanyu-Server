@@ -11,11 +11,14 @@ export type ProfessionalReportSubmissionRow = {
   gender: string
   date_of_birth: string | null
   nationality: string
-  phone: string
+  phone: string | null
   email: string
   city: string
   preferred_language: string
   visit_purpose: string
+  care_need: string
+  care_need_other: string
+  expected_treatment_time: string
   diagnosis: string
   stage: string
   chief_complaint: string
@@ -59,7 +62,8 @@ export const createProfessionalReportSubmission = async (
     `
     INSERT INTO professional_report_submissions (
       submission_no, locale, full_name, gender, date_of_birth, nationality,
-      phone, email, city, preferred_language, visit_purpose, diagnosis, stage,
+      phone, email, city, preferred_language, visit_purpose, care_need,
+      care_need_other, expected_treatment_time, diagnosis, stage,
       chief_complaint, pathology_summary, imaging_summary, genetic_summary,
       treatment_history, medication_history, comorbidities, allergy_history,
       budget_range, insurance_type, desired_city, urgency, selected_regions,
@@ -68,10 +72,11 @@ export const createProfessionalReportSubmission = async (
     VALUES (
       $1, $2, $3, $4, $5, $6,
       $7, $8, $9, $10, $11, $12, $13,
-      $14, $15, $16, $17,
-      $18, $19, $20, $21,
-      $22, $23, $24, $25, $26::jsonb,
-      $27::jsonb, $28::jsonb, $29, $30
+      $14, $15, $16,
+      $17, $18, $19, $20,
+      $21, $22, $23, $24,
+      $25, $26, $27, $28, $29::jsonb,
+      $30::jsonb, $31::jsonb, $32, $33
     )
     RETURNING id, submission_no, report_status, created_at
     `,
@@ -82,11 +87,14 @@ export const createProfessionalReportSubmission = async (
       patient.gender,
       patient.dateOfBirth || null,
       patient.nationality,
-      patient.phone,
+      patient.phone || null,
       patient.email,
       patient.city,
       patient.preferredLanguage,
       medical.visitPurpose,
+      medical.careNeed,
+      medical.careNeedOther,
+      medical.expectedTreatmentTime,
       medical.diagnosis,
       medical.stage,
       medical.chiefComplaint,

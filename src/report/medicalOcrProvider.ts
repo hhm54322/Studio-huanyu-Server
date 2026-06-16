@@ -215,6 +215,7 @@ const requestBaiduOcr = async (
   accessToken: string,
   options: Record<string, string> = {},
 ) => {
+  const startedAt = Date.now()
   const url = new URL(`${config.baiduOcrBaseUrl}${endpoint}`)
   url.searchParams.set('access_token', accessToken)
 
@@ -255,12 +256,12 @@ const requestBaiduOcr = async (
   const uniqueLines = Array.from(new Set(lines.map((line) => line.trim()).filter(Boolean)))
   const text = uniqueLines.join('\n').trim()
 
-  return { endpoint, json, text }
+  return { endpoint, json, text, durationMs: Date.now() - startedAt }
 }
 
 const buildBaiduOcrResult = (
   attempt: Awaited<ReturnType<typeof requestBaiduOcr>>,
-  attempts: Array<{ endpoint: string; parser: string; textLength: number; logId?: number | string }>,
+  attempts: Array<{ endpoint: string; parser: string; textLength: number; durationMs?: number; logId?: number | string }>,
 ): MedicalOcrResult => {
   const { endpoint, json, text } = attempt
 
@@ -288,7 +289,7 @@ export const recognizeBaiduMedicalImage = async (
 
   const buffer = source.buffer ? Buffer.from(source.buffer) : await readFile(input.absolutePath)
   const accessToken = await getBaiduAccessToken()
-  const attempts: Array<{ endpoint: string; parser: string; textLength: number; logId?: number | string }> = []
+  const attempts: Array<{ endpoint: string; parser: string; textLength: number; durationMs?: number; logId?: number | string }> = []
 
   for (const endpoint of getBaiduMedicalEndpointAttempts(input, source)) {
     const attempt = await requestBaiduOcr(endpoint, buffer, accessToken)
@@ -296,6 +297,7 @@ export const recognizeBaiduMedicalImage = async (
       endpoint,
       parser: getBaiduParserName(endpoint),
       textLength: attempt.text.length,
+      durationMs: attempt.durationMs,
       logId: attempt.json.log_id,
     })
     if (attempt.text && isBaiduMedicalTextUsable(attempt.text)) {
@@ -312,6 +314,7 @@ export const recognizeBaiduMedicalImage = async (
       endpoint,
       parser: getBaiduParserName(endpoint),
       textLength: attempt.text.length,
+      durationMs: attempt.durationMs,
       logId: attempt.json.log_id,
     })
     if (attempt.text) return buildBaiduOcrResult(attempt, attempts)

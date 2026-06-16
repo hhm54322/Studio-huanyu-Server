@@ -6,12 +6,13 @@ import { generateReport } from '../report/generator.js'
 import { reportSubmissionSchema } from '../validators/reportSubmission.js'
 
 const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
-type GenerationLogMeta = Pick<ReportGenerationEvent, 'locale' | 'visitPurpose' | 'selectedRegionCount' | 'hasUploads' | 'uploadedFileCount' | 'parsedFileCount'>
+type GenerationLogMeta = Pick<ReportGenerationEvent, 'locale' | 'visitPurpose' | 'selectedRegionCount' | 'hasUploads' | 'uploadedFileCount' | 'parsedFileCount' | 'phaseDurationsMs'>
 
 export const registerReportSubmissionRoutes = async (app: FastifyInstance) => {
   app.post('/api/report-submissions', async (request, reply) => {
     let createdSubmissionNo = ''
     let logMeta: Partial<GenerationLogMeta> = {}
+    const phaseDurationsMs: Record<string, number> = {}
     const startedAt = Date.now()
     try {
       if (request.isMultipart()) {
@@ -22,7 +23,9 @@ export const registerReportSubmissionRoutes = async (app: FastifyInstance) => {
         })
       }
 
+      const parseStartedAt = Date.now()
       const parsedInput = reportSubmissionSchema.parse(request.body)
+      phaseDurationsMs.requestParse = Date.now() - parseStartedAt
       const input = {
         ...parsedInput,
         uploadedFiles: [],
@@ -35,13 +38,16 @@ export const registerReportSubmissionRoutes = async (app: FastifyInstance) => {
         hasUploads: false,
         uploadedFileCount: 0,
         parsedFileCount: 0,
+        phaseDurationsMs,
       }
+      const dbCreateStartedAt = Date.now()
       const created = await createReportSubmission(input, {
         userAgent: request.headers['user-agent'],
         ip: request.ip,
       })
       createdSubmissionNo = created.submission_no
       await updateReportSubmissionResult(created.submission_no, 'generating', null)
+      phaseDurationsMs.dbCreate = Date.now() - dbCreateStartedAt
       await writeReportGenerationEvent({
         event: 'generation_started',
         mode: 'free',
@@ -50,8 +56,20 @@ export const registerReportSubmissionRoutes = async (app: FastifyInstance) => {
         ...logMeta,
       }).catch((logError) => request.log.error(logError))
 
-      const report = await generateReport(input, created.submission_no)
+      const generationStartedAt = Date.now()
+      let report
+      try {
+        report = await generateReport(input, created.submission_no, {
+          onPhaseDuration: (phase, durationMs) => {
+            phaseDurationsMs[phase] = durationMs
+          },
+        })
+      } finally {
+        phaseDurationsMs.reportGeneration = Date.now() - generationStartedAt
+      }
+      const dbUpdateStartedAt = Date.now()
       await updateReportSubmissionResult(created.submission_no, 'generated', report)
+      phaseDurationsMs.dbUpdate = Date.now() - dbUpdateStartedAt
       await writeReportGenerationEvent({
         event: 'generation_completed',
         mode: 'free',
@@ -142,6 +160,9 @@ export const registerReportSubmissionRoutes = async (app: FastifyInstance) => {
         city: row.city,
         preferredLanguage: row.preferred_language,
         visitPurpose: row.visit_purpose,
+        careNeed: row.care_need,
+        careNeedOther: row.care_need_other,
+        expectedTreatmentTime: row.expected_treatment_time,
         chiefComplaint: row.chief_complaint,
       },
       selectedRegions: row.selected_regions,

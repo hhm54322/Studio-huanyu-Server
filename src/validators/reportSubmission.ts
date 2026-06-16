@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { careNeedValues, expectedTreatmentTimeValues } from '../report/patientIntent.js'
 import { professionalParsedFileSchema, professionalUploadedFileSchema } from './professionalReportSubmission.js'
 
 const supportedLocales = ['zh', 'en', 'id', 'ru', 'mn'] as const
@@ -30,13 +31,20 @@ export const reportSubmissionSchema = z.object({
     nationality: z.string().trim().max(80).optional().default(''),
     idType: z.enum(idTypes).or(z.literal('')).optional().default(''),
     idNumber: z.string().trim().max(80).optional().default(''),
-    phone: z.string().trim().min(7).max(40).refine((value) => phoneRegex.test(value), 'Invalid phone number'),
-    email: z.string().trim().max(160).optional().default('').refine((value) => !value || z.string().email().safeParse(value).success, 'Invalid email'),
+    phone: z.string().trim().max(40).optional().default('').refine((value) => !value || phoneRegex.test(value), 'Invalid phone number'),
+    email: z.string().trim().min(1).max(160).refine((value) => z.string().email().safeParse(value).success, 'Invalid email'),
     city: z.string().trim().max(120).optional().default(''),
     preferredLanguage: z.string().trim().max(40).optional().default(''),
     visitPurpose: z.string().trim().min(1).max(80),
+    careNeed: z.enum(careNeedValues).or(z.literal('')).optional().default(''),
+    careNeedOther: z.string().trim().max(300).optional().default(''),
+    expectedTreatmentTime: z.enum(expectedTreatmentTimeValues).or(z.literal('')).optional().default(''),
     chiefComplaint: z.string().trim().max(500).optional().default(''),
   }).superRefine((value, ctx) => {
+    if (value.careNeed === 'other' && value.careNeedOther.trim().length < 2) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['careNeedOther'], message: 'Care need details are required' })
+    }
+
     if (!value.idNumber) return
 
     const idNumber = value.idNumber.replace(/\s/g, '')

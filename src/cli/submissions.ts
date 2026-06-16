@@ -34,6 +34,9 @@ const fieldLabels = {
   city: '常住城市',
   preferredLanguage: '首选语言',
   visitPurpose: '就医目的',
+  careNeed: '就医诉求',
+  careNeedOther: '就医诉求补充说明',
+  expectedTreatmentTime: '期望治疗时间',
   chiefComplaint: '疾病/症状描述',
   selectedRegions: '期望对比国家/地区',
   locale: '页面语言',
@@ -112,6 +115,19 @@ const valueLabels: Record<string, Record<string, string>> = {
     endocrinology_metabolism: '内分泌与代谢科',
     other: '其他',
   },
+  careNeed: {
+    advanced_surgery: '寻求前沿手术方案',
+    targeted_immunotherapy: '寻求靶向/免疫新药治疗',
+    second_opinion: '寻求第二诊疗意见',
+    postoperative_rehab_recurrence_prevention: '术后康复与防复发方案',
+    other: '其他',
+  },
+  expectedTreatmentTime: {
+    within_1_month: '1个月内',
+    '1_to_3_months': '1-3个月',
+    '3_to_6_months': '3-6个月',
+    consult_only: '仅咨询方案，暂无赴华计划',
+  },
   selectedRegions: {
     north_america: '北美（美国/加拿大）',
     europe: '欧洲（英国/德国/法国）',
@@ -159,6 +175,9 @@ const normalizeForOutput = (row: ReportSubmissionRow) => ({
   city: row.city,
   preferredLanguage: row.preferred_language,
   visitPurpose: row.visit_purpose,
+  careNeed: row.care_need,
+  careNeedOther: row.care_need_other,
+  expectedTreatmentTime: row.expected_treatment_time,
   chiefComplaint: row.chief_complaint,
   selectedRegions: row.selected_regions,
   locale: row.locale,
@@ -196,6 +215,9 @@ const toCsv = (rows: ReturnType<typeof normalizeForOutput>[]) => {
     'city',
     'preferredLanguage',
     'visitPurpose',
+    'careNeed',
+    'careNeedOther',
+    'expectedTreatmentTime',
     'chiefComplaint',
     'selectedRegions',
     'locale',
@@ -218,6 +240,8 @@ try {
       姓名: row.full_name,
       邮箱: row.email,
       就医目的: labelValue('visitPurpose', row.visit_purpose),
+      就医诉求: labelValue('careNeed', row.care_need),
+      期望治疗时间: labelValue('expectedTreatmentTime', row.expected_treatment_time),
     })))
   } else if (command === 'get') {
     const submissionNo = args[1]

@@ -1,5 +1,5 @@
 import type { ReportSubmissionInput } from '../validators/reportSubmission.js'
-import { config } from '../config.js'
+import { jsonrepair } from 'jsonrepair'
 import { getKnowledgeForFreeReport, type DocumentKnowledgeBlock } from './documentKnowledge.js'
 import {
   dentalAdvantages,
@@ -15,6 +15,7 @@ import { defaultDisease, diseases, packages, regions, type KnowledgeDisease, typ
 import type { ReportLayoutSection } from './layoutTypes.js'
 import { collectMedicalFactBundle, summarizeMedicalFactBundle, type MedicalDocumentFact, type MedicalFactBundle } from './medicalFactExtractor.js'
 import { requestMedicalChatCompletion, type MedicalLlmMessage } from './medicalLlmProvider.js'
+import { getCareNeedLabel, getExpectedTreatmentTimeLabel, getPatientIntentSummary } from './patientIntent.js'
 import { sanitizeReportText } from './textSanitizer.js'
 import { generatedReportSchema, type GeneratedReport } from './types.js'
 
@@ -27,23 +28,52 @@ type FreeReportPatch = Partial<Pick<
   | 'concerns'
   | 'hospitals'
   | 'highlights'
+  | 'packages'
+  | 'advancedCare'
   | 'paymentAndInsurance'
 > & {
   plan?: Partial<GeneratedReport['plan']>
 }>
 
-const shouldRequireLlmReport = () => config.medicalLlmStrictReports
+type LlmPatchEnvelope = FreeReportPatch & {
+  servicePackages?: GeneratedReport['packages']
+  professionalPackages?: GeneratedReport['packages']
+  professionalServicePackages?: GeneratedReport['packages']
+  evaluationPackages?: GeneratedReport['packages']
+  costBreakdown?: GeneratedReport['plan']['costBreakdown']
+  cost_breakdown?: GeneratedReport['plan']['costBreakdown']
+  costDetails?: GeneratedReport['plan']['costBreakdown']
+  cost_breakdown_details?: GeneratedReport['plan']['costBreakdown']
+  detailedCosts?: GeneratedReport['plan']['costBreakdown']
+  detailedCostBreakdown?: GeneratedReport['plan']['costBreakdown']
+  detailed_cost_breakdown?: GeneratedReport['plan']['costBreakdown']
+  frontierCare?: GeneratedReport['advancedCare']
+  advancedTherapies?: GeneratedReport['advancedCare']
+  advancedTherapyRecommendations?: GeneratedReport['advancedCare']
+  frontierTherapyRecommendations?: GeneratedReport['advancedCare']
+  drugAndTherapyInsights?: GeneratedReport['advancedCare']
+}
 
-const rejectOrFallback = <T>(reason: string, fallback: T): T => {
-  if (shouldRequireLlmReport()) {
-    throw new Error(`MEDICAL_LLM_QUALITY_REJECTED: ${reason}`)
-  }
-  return fallback
+type FreeGenerationOptions = {
+  onPhaseDuration?: (phase: string, durationMs: number) => void
 }
 
 const sanitizeGenerationError = (error: unknown) => (
   error instanceof Error ? error.message : String(error)
 ).replace(/sk-[A-Za-z0-9_*.-]+/g, 'sk-***')
+
+const trackGenerationPhase = async <T>(
+  phase: string,
+  options: FreeGenerationOptions | undefined,
+  run: () => Promise<T>,
+) => {
+  const startedAt = Date.now()
+  try {
+    return await run()
+  } finally {
+    options?.onPhaseDuration?.(phase, Date.now() - startedAt)
+  }
+}
 
 type DiseaseMatch = {
   key: string
@@ -159,7 +189,10 @@ const getParsedFileEvidence = (input: ReportSubmissionInput) => input.parsedFile
   })
 
 const getSubmittedComplaint = (input: ReportSubmissionInput) => {
-  const complaint = input.basicInfo.chiefComplaint.trim()
+  const complaint = [
+    input.basicInfo.chiefComplaint.trim(),
+    getPatientIntentSummary(input.basicInfo),
+  ].filter(Boolean).join('\n')
   if (!input.uploadedFiles.length && !input.parsedFiles.length) return complaint
 
   const parsedEvidence = getParsedFileEvidence(input).slice(0, 5)
@@ -237,6 +270,22 @@ const getBreakdownTotalCost = (breakdown: GeneratedReport['plan']['breakdown']) 
 }
 
 const normalizeReportCosts = (report: GeneratedReport): GeneratedReport => {
+  const detailedChinaTotal = report.plan.costBreakdown?.summary.chinaTotal?.trim()
+  if (detailedChinaTotal) {
+    return {
+      ...report,
+      countries: report.countries.map((country) => (
+        country.recommended || country.name.includes('中国')
+          ? { ...country, fee: detailedChinaTotal }
+          : country
+      )),
+      plan: {
+        ...report.plan,
+        totalCost: detailedChinaTotal,
+      },
+    }
+  }
+
   const totalCost = getBreakdownTotalCost(report.plan.breakdown)
   if (!totalCost) return report
 
@@ -334,8 +383,10 @@ const isMetastaticBreastFreeCase = (context: ReportContext) => {
 }
 
 const getNeedForReport = (context: ReportContext) => {
+  const patientIntent = getPatientIntentSummary(context.input.basicInfo)
   if (isMetastaticBreastFreeCase(context)) {
-    return context.input.basicInfo.chiefComplaint.trim() || `本次围绕“${context.disease.label}”进行来华就医可行性预审。`
+    const complaint = context.input.basicInfo.chiefComplaint.trim()
+    return [complaint || `本次围绕“${context.disease.label}”进行来华就医可行性预审。`, patientIntent].filter(Boolean).join('；')
   }
   return getComplaintForReport(context.input, context.disease.label)
 }
@@ -685,44 +736,15 @@ const getDentalCostProfile = (context: ReportContext): DentalCostProfile => {
 const applyDentalCostGuardrails = (report: GeneratedReport, context: ReportContext): GeneratedReport => {
   if (context.diseaseKey !== 'dental' || context.personalization.mismatch) return report
 
-  const profile = getDentalCostProfile(context)
   const existingAdvantages = report.advantages
     .filter((item) => !reportContainsAny({ ...report, advantages: [item] }, ['肿瘤', '化疗', '放疗', '靶向', '免疫治疗']))
-    .filter((item) => !['推荐机构', ...dentalAdvantages.map((advantage) => advantage.label)].includes(item.label))
-    .slice(0, 1)
-  const dentalHighlights = [
-    `牙科方向仅推荐${dentalPartner.name}，最终接诊和方案以鼎植预审/面诊意见为准。`,
-    dentalPartner.preparation,
-    ...(profile.key !== 'basic' ? [dentalSimulationUpgradeText] : []),
-  ]
+  const cleanHighlights = report.highlights
+    .filter((item) => !/肿瘤|化疗|放疗|靶向|免疫治疗/.test(item))
 
   return {
     ...report,
-    countries: report.countries.map((country) => {
-      if (country.recommended || country.name.includes('中国')) {
-        return { ...country, fee: profile.totalCost }
-      }
-      const fee = profile.regionFees[country.name]
-      return fee ? { ...country, fee } : country
-    }),
-    plan: {
-      ...report.plan,
-      duration: profile.duration,
-      totalCost: profile.totalCost,
-      breakdown: profile.breakdown,
-    },
-    hospitals: [
-      { city: dentalPartner.city, name: dentalPartner.name, reason: dentalPartner.recommendationReason },
-    ],
-    advantages: [
-      dentalBrandAdvantage,
-      ...dentalAdvantages.map((item) => ({ label: item.label, value: item.value })),
-      ...existingAdvantages,
-    ].slice(0, 4),
-    highlights: unique([
-      ...dentalHighlights,
-      ...report.highlights.filter((item) => !/肿瘤|化疗|放疗|靶向|免疫治疗/.test(item)).slice(0, 3),
-    ]).slice(0, 4),
+    advantages: existingAdvantages.length ? existingAdvantages : report.advantages,
+    highlights: cleanHighlights.length ? cleanHighlights : report.highlights,
   }
 }
 
@@ -1151,6 +1173,9 @@ const buildPersonalization = (input: ReportSubmissionInput, match: DiseaseMatch)
   const hasImplant = includesAny(text, ['种植', 'implant'])
   const hasCancer = includesAny(text, ['癌', '肿瘤', '结节', '病理', '化疗', '放疗', '靶向', '免疫'])
   const hasCheckup = includesAny(text, ['体检', '筛查', '早筛', '风险'])
+  const careNeedLabel = getCareNeedLabel(input.basicInfo.careNeed, input.basicInfo.careNeedOther)
+  const expectedTreatmentTimeLabel = getExpectedTreatmentTimeLabel(input.basicInfo.expectedTreatmentTime)
+  const consultOnly = input.basicInfo.expectedTreatmentTime === 'consult_only'
   const specialtyRules = getSpecialtyRules(match.key)
   const detectedSignals = (match.detectedSignals || []).map((item) => `${item.label}：${item.hits.slice(0, 4).join('、')}`)
 
@@ -1184,6 +1209,8 @@ const buildPersonalization = (input: ReportSubmissionInput, match: DiseaseMatch)
   }
 
   const decisionPoints = unique([
+    careNeedLabel ? `回应用户就医诉求：${careNeedLabel}` : '',
+    expectedTreatmentTimeLabel ? `按期望治疗时间“${expectedTreatmentTimeLabel}”调整预审节奏和出行建议` : '',
     match.mismatch ? '先重新确认就诊科室和主要问题，不建议按原选择科室直接生成治疗方案' : '',
     match.weakMatch ? `用户选择了${match.requestedDisease.label}，但主诉缺少该科室的典型关键词，需先补充诊断、检查或既往医生意见` : '',
     match.secondaryDirections?.length ? `同时排查是否合并${match.secondaryDirections.slice(0, 2).join('、')}相关问题` : '',
@@ -1194,6 +1221,9 @@ const buildPersonalization = (input: ReportSubmissionInput, match: DiseaseMatch)
   ]).slice(0, 5)
 
   const planPriorities = unique([
+    careNeedLabel ? `围绕“${careNeedLabel}”组织诊疗路径和专家预审问题` : '',
+    consultOnly ? '用户当前仅咨询方案，报告应以远程资料预审、第二意见和后续决策清单为主，不直接推动赴华排期' : '',
+    expectedTreatmentTimeLabel && !consultOnly ? `按“${expectedTreatmentTimeLabel}”倒排资料补全、专家预审和出行准备` : '',
     match.mismatch ? '所选科室与症状描述不一致，先做综合分诊和危险信号排查' : '',
     match.weakMatch ? '主诉与所选科室关联信息不足，先做资料补全和专科预审，再进入治疗比较' : '',
     match.secondaryDirections?.length ? `症状中还出现${match.secondaryDirections.slice(0, 2).join('、')}信号，报告需避免单一科室过度推断` : '',
@@ -1224,8 +1254,12 @@ const buildPersonalization = (input: ReportSubmissionInput, match: DiseaseMatch)
     requiredMaterials: unique([...(requiredByDisease[match.key] || requiredByDisease.other)]).slice(0, 6),
     planPriorities,
     costGuidance: '费用必须按用户可能发生的检查、治疗、材料、住院/住宿、翻译陪诊等项目拆分；如无法判断治疗强度，应写成分层区间而不是单一大包价。',
-    countryGuidance: '国家对比必须围绕当前主诉和专科需求；若通用地区费用不适合该科室，应改写为按项目评估或给出更保守的项目型费用描述。',
-    specialtyRules,
+    countryGuidance: '国家对比必须围绕当前主诉和专科需求；若通用地区费用不适合该科室，应改写为按项目评估或给出更审慎的项目型费用描述。',
+    specialtyRules: unique([
+      ...specialtyRules,
+      careNeedLabel ? `报告必须回应用户就医诉求“${careNeedLabel}”，并影响治疗目标、医院/专家匹配、费用拆分和下一步行动。` : '',
+      expectedTreatmentTimeLabel ? `报告必须按期望治疗时间“${expectedTreatmentTimeLabel}”调整时间线；如果仅咨询方案，不应写成立即赴华安排。` : '',
+    ]),
   }
 }
 
@@ -1486,8 +1520,13 @@ const buildFreeLayoutSections = (report: GeneratedReport, context: ReportContext
           title: '专业评估服务包',
           cards: report.packages.map((pkg) => ({
             title: pkg.name,
+            subtitle: pkg.subtitle,
             value: pkg.price,
-            description: pkg.features.join('；'),
+            description: (pkg.featureDetails?.length
+              ? pkg.featureDetails.map((feature) => feature.label).join('；')
+              : pkg.features.join('；')),
+            detail: pkg.footnote,
+            tag: pkg.badge,
             tone: pkg.highlight ? 'highlight' : 'default',
           })),
         },
@@ -1607,6 +1646,8 @@ const compactPatientInputForPrompt = (input: ReportSubmissionInput) => ({
   locale: input.locale,
   basicInfo: {
     ...input.basicInfo,
+    careNeedLabel: getCareNeedLabel(input.basicInfo.careNeed, input.basicInfo.careNeedOther),
+    expectedTreatmentTimeLabel: getExpectedTreatmentTimeLabel(input.basicInfo.expectedTreatmentTime),
     chiefComplaint: truncateForPrompt(input.basicInfo.chiefComplaint, 700),
   },
   selectedRegions: input.selectedRegions,
@@ -1706,23 +1747,44 @@ const compactRuleReportForPrompt = (report: GeneratedReport) => ({
 
 const buildPatchPrompt = (context: ReportContext, ruleReport: GeneratedReport): MedicalLlmMessage[] => {
   const { input, disease, diseaseKey, personalization, medicalFacts, documentKnowledge } = context
+  const careNeedLabel = getCareNeedLabel(input.basicInfo.careNeed, input.basicInfo.careNeedOther)
+  const expectedTreatmentTimeLabel = getExpectedTreatmentTimeLabel(input.basicInfo.expectedTreatmentTime)
 
   return [
     {
       role: 'system',
       content: [
+        '/no_think',
         '你是寰宇云医简易预审报告的医学内容生成助手。',
         '系统已经有一份完整字段结构基线；你要输出完整内容 JSON patch，用于把基线改成更贴合用户的专业预审报告。',
         '只基于用户填写的基础信息、主诉、科室方向、地区偏好和给定知识摘要生成。',
         '不得编造检查数值、上传报告内容、确定诊断、医生姓名、疗效承诺或具体处方。',
         '简易报告没有上传医疗报告时，不得出现“上传资料提示、已读取上传、从报告可见”等表达。',
-        '输出必须是严格 JSON，不要 Markdown，不要解释。',
+        '不要推理，不要解释，直接输出严格 JSON；不要 Markdown。',
       ].join('\n'),
     },
     {
       role: 'user',
-      content: JSON.stringify({
+      content: `/no_think\n${JSON.stringify({
         task: '生成简易报告完整内容 JSON patch',
+        requiredTopLevelKeys: [
+          'disease',
+          'treatment',
+          'countries',
+          'advantages',
+          'concerns',
+          'hospitals',
+          'packages',
+          'highlights',
+          'plan',
+          'paymentAndInsurance',
+        ],
+        requiredPlanKeys: [
+          'direction',
+          'duration',
+          'totalCost',
+          'breakdown',
+        ],
         allowedPatchFields: [
           'disease',
           'treatment',
@@ -1730,6 +1792,7 @@ const buildPatchPrompt = (context: ReportContext, ruleReport: GeneratedReport): 
           'advantages',
           'concerns',
           'hospitals',
+          'packages',
           'highlights',
           'plan.direction',
           'plan.duration',
@@ -1743,13 +1806,76 @@ const buildPatchPrompt = (context: ReportContext, ruleReport: GeneratedReport): 
           countries: '必填，沿用 baselineRuleReport.countries 的国家/地区和 flag，可重写 fee/wait/tech/service/visa/follow/recommended',
           advantages: '必填，3-5项，每项 {label,value}，体现中国方案价值、资料限制和下一步判断',
           concerns: '必填，4-7项，每项 {concern,solution}，覆盖资料不足、急症排除、费用波动、治疗连续性等',
-          hospitals: '必填，非牙科3项；牙科只允许1项鼎植口腔；每项 {city,name,reason}，reason 必须解释为何匹配当前主诉',
+          hospitals: [
+            '必填，非牙科3项；牙科只允许1项鼎植口腔。',
+            '每项至少包含 {city,name,reason}，reason 必须解释为何匹配当前主诉。',
+            '如你基于给定知识、通用医学机构认知和当前主诉有足够把握，可补充可选字段：',
+            '{englishName,department,matchScore,rankLabel,tags,internationalPatients,waitTime,detailItems,preparation}。',
+            'matchScore 必须是0-100整数，表达当前病例适配度而不是医院绝对排名。',
+            '不要轻易省略匹配数据；能基于病种、主诉、地区和通用专科能力给出审慎区间判断时，matchScore、waitTime、internationalPatients 应尽量返回，并用“约/通常/需预审确认”标注不确定性。',
+            '数据要有决策价值，不能过度宽泛；matchScore 要体现医院之间的相对适配差异，waitTime/internationalPatients 能给量级或区间就不要只写“需确认”。',
+            'rankLabel/tags 可写专科优势、中心资质、区域优势或能力标签；internationalPatients/waitTime 可给区间、量级或“需预审确认”，不要编造精确数字。',
+            'detailItems 用于展开详情，可包含“适配理由、建议科室、预审重点、需准备资料、注意事项”等；不要编造医生姓名、确切手术量、保乳率或号源承诺。',
+            '只有完全无法支撑时才省略可选字段，前端会自动隐藏。',
+          ].join(' '),
+          packages: [{
+            name: '基础评估包 / Basic',
+            subtitle: '结合当前病例的短句，非空',
+            price: '$xx',
+            originalPrice: '￥xx',
+            icon: 'FileText',
+            highlight: false,
+            features: ['恰好3条短摘要', '每条不超过18字', '必须结合病例'],
+            featureDetails: [
+              { label: '至少6项明细', status: 'included' },
+              { label: '治疗路径初步判断', status: 'included' },
+              { label: '医院方向建议', status: 'included' },
+              { label: '费用区间提示', status: 'included' },
+              { label: '不含视频面诊', status: 'excluded' },
+              { label: '不含指定专家预约', status: 'excluded' },
+            ],
+            footnote: '结合当前病例的脚注，非空',
+          }, {
+            name: '标准面诊包 / Standard',
+            subtitle: '结合当前病例的短句，非空',
+            price: '$xx',
+            originalPrice: '￥xx',
+            icon: 'Video',
+            highlight: true,
+            features: ['恰好3条短摘要', '每条不超过18字', '必须结合病例'],
+            featureDetails: [
+              { label: '专家视频面诊', status: 'emphasis' },
+              { label: '病历资料整理', status: 'included' },
+              { label: '医院匹配建议', status: 'included' },
+              { label: '费用与时间线复核', status: 'included' },
+              { label: '面诊后答疑', status: 'emphasis' },
+              { label: '不含MDT多学科会诊', status: 'excluded' },
+            ],
+            footnote: '结合当前病例的脚注，非空',
+          }, {
+            name: '深度面诊包 / Premium',
+            subtitle: '结合当前病例的短句，非空',
+            price: '$xx',
+            originalPrice: '￥xx',
+            icon: 'MessageSquare',
+            highlight: false,
+            features: ['恰好3条短摘要', '每条不超过18字', '必须结合病例'],
+            featureDetails: [
+              { label: 'MDT多学科会诊', status: 'emphasis' },
+              { label: '多医院方案比较', status: 'included' },
+              { label: '指定专家预约协调', status: 'included' },
+              { label: 'VIP号源预留评估', status: 'included' },
+              { label: '治疗路径深度分析', status: 'included' },
+              { label: '出行前资料清单', status: 'included' },
+            ],
+            footnote: '结合当前病例的脚注，非空',
+          }],
           highlights: '必填，4-7条简短要点',
           plan: {
             direction: '必填，检查/复核/转诊/管理路径，至少4个步骤',
-            duration: '必填，在华停留或远程预审周期，需保守表达',
-            totalCost: '必填，中国方案预估总费用，保守区间',
-            breakdown: '必填，4-8项，每项 {item,cost}，按检查/治疗/服务/住宿生活分层',
+            duration: '必填，在华停留或远程预审周期，需审慎表达',
+            totalCost: '必填，中国方案预估总费用，可先给美元或人民币区间；后续费用明细会由医疗大模型单独细化并覆盖总价展示',
+            breakdown: '必填，4-8项，每项 {item,cost}，作为医疗大模型后续费用细化的依据；不要输出 plan.costBreakdown',
           },
           paymentAndInsurance: '必填，3-5条，覆盖预算分项、预授权/直付/事后理赔、材料清单和不承诺报销',
         },
@@ -1757,6 +1883,8 @@ const buildPatchPrompt = (context: ReportContext, ruleReport: GeneratedReport): 
           locale: input.locale,
           basicInfo: {
             ...input.basicInfo,
+            careNeedLabel,
+            expectedTreatmentTimeLabel,
             chiefComplaint: truncateForPrompt(input.basicInfo.chiefComplaint, 700),
           },
           selectedRegions: input.selectedRegions,
@@ -1785,95 +1913,1589 @@ const buildPatchPrompt = (context: ReportContext, ruleReport: GeneratedReport): 
           advantages: ruleReport.advantages,
           concerns: ruleReport.concerns,
           hospitals: ruleReport.hospitals,
+          packagesReference: ruleReport.packages.map((pkg) => ({
+            name: pkg.name,
+            price: pkg.price,
+            originalPrice: pkg.originalPrice,
+            icon: pkg.icon,
+            highlight: pkg.highlight,
+            badge: pkg.badge,
+          })),
           plan: {
             direction: ruleReport.plan.direction,
             duration: ruleReport.plan.duration,
             totalCost: ruleReport.plan.totalCost,
             breakdown: ruleReport.plan.breakdown,
           },
-          packages: ruleReport.packages,
           paymentAndInsurance: ruleReport.paymentAndInsurance,
           highlights: ruleReport.highlights,
         },
         qualityRules: [
           '必须回应 chiefComplaint 中至少两个具体信息点。',
+          careNeedLabel ? `必须把用户就医诉求“${careNeedLabel}”反映到 treatment、concerns、plan.direction、highlights 和 next-step 表达中。` : '',
+          expectedTreatmentTimeLabel ? `必须按期望治疗时间“${expectedTreatmentTimeLabel}”调整预审节奏、出行准备和时间线；如果是仅咨询方案，不能写成已决定赴华治疗。` : '',
           '没有上传医疗报告时，只能写“基于表单信息/用户自填信息”。',
           '不得把科室方向写成已确诊诊断。',
-          '国家对比、医院推荐和费用明细要围绕当前主诉改写，不能照抄通用基线。',
-          'packages 字段不需要输出，由系统沿用基线。',
+          '国家对比、医院推荐和费用摘要要围绕当前主诉改写，不能照抄通用基线。',
+          'packages 必须恰好3项：Basic、Standard、Premium；每档 features 恰好3条，featureDetails 至少6项，且 subtitle/footnote 必须结合当前病例。',
+          'Basic 必须有“不含视频面诊”的 excluded 明细；Standard 必须有视频面诊/跟进答疑 emphasis；Premium 必须有 MDT/多学科会诊 emphasis。',
+          '本次主 patch 不需要输出 plan.costBreakdown 或 advancedCare；它们会由并行医疗模型补充任务按当前病例生成。',
           diseaseKey === 'dental' ? `牙科方向只允许围绕${dentalPartner.name}和牙科主诉表达，不要新增其他口腔医院。` : '',
         ].filter(Boolean),
-      }),
+      })}`,
+    },
+  ]
+}
+
+const buildHospitalDetailsPrompt = (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+  patch: FreeReportPatch,
+): MedicalLlmMessage[] => {
+  const { input, disease, diseaseKey, personalization, medicalFacts, documentKnowledge } = context
+  const careNeedLabel = getCareNeedLabel(input.basicInfo.careNeed, input.basicInfo.careNeedOther)
+  const expectedTreatmentTimeLabel = getExpectedTreatmentTimeLabel(input.basicInfo.expectedTreatmentTime)
+
+  return [
+    {
+      role: 'system',
+      content: [
+        '/no_think',
+        '你是寰宇云医简易报告的推荐医院详情生成助手。',
+        '你只补充推荐医院 Top3 的结构化详情，不输出完整报告，不输出 Markdown。',
+        '所有信息必须基于用户基础信息、病种方向、主诉、地区偏好、给定知识摘要和通用医院专科能力做审慎判断。',
+        '不得编造医生姓名、确切号源、床位、真实接诊承诺、精确年患者量或治疗效果。',
+        '能给区间、量级或需预审确认时不要留空；只有完全无法支撑时才写“需预审确认”。',
+      ].join('\n'),
+    },
+    {
+      role: 'user',
+      content: `/no_think\n${JSON.stringify({
+        task: '只生成推荐医院 Top3 详情 JSON',
+        outputSchema: {
+          hospitals: [{
+            city: '城市',
+            name: '医院名',
+            reason: '为什么匹配当前主诉和病种',
+            englishName: '英文名或常用英文简称；不确定可写需预审确认',
+            department: '建议科室/MDT方向',
+            matchScore: '0-100整数；体现当前病例相对适配度，三家需要拉开差异',
+            rankLabel: '专科优势/区域优势/能力标签',
+            tags: ['2-4个短标签'],
+            internationalPatients: '国际患者接待能力或患者量量级；不能精确时给“通常具备国际患者协调/需预审确认”等审慎表达',
+            waitTime: '预计预审/首诊等待时间；不能精确时给区间或“需预审确认”',
+            detailItems: [
+              { label: '适配理由', value: '贴合当前病种、主诉和资料状态' },
+              { label: '建议科室', value: '科室/MDT方向' },
+              { label: '预审重点', value: '医生预审需要先判断的问题' },
+              { label: '需准备资料', value: '资料清单' },
+            ],
+            preparation: '发起预审前准备动作',
+          }],
+        },
+        hardRules: [
+          diseaseKey === 'dental'
+            ? `牙科只允许输出1项${dentalPartner.name}，不得推荐其他口腔医院。`
+            : '非牙科必须输出3项医院。',
+          '每项必须包含 matchScore、department、internationalPatients、waitTime、detailItems、preparation。',
+          'matchScore 要体现相对适配差异，不能三家都一样；如果无法支撑，matchScore=0 并在 reason/preparation 说明需补充资料。',
+          'internationalPatients 和 waitTime 可以是区间、量级或需预审确认，但不能空。',
+          'detailItems 至少4项，必须用于前端展开详情；每项 label/value 都非空。',
+          '不要输出医生姓名、精确患者量、确定号源、保证入院或治疗承诺。',
+        ],
+        patientInput: {
+          locale: input.locale,
+          basicInfo: {
+            ...input.basicInfo,
+            careNeedLabel,
+            expectedTreatmentTimeLabel,
+            chiefComplaint: truncateForPrompt(input.basicInfo.chiefComplaint, 700),
+          },
+          selectedRegions: input.selectedRegions,
+          hasUploadedMedicalRecords: input.uploadedFiles.length > 0,
+        },
+        personalization,
+        matchedKnowledge: {
+          diseaseKey,
+          disease: compactDiseaseForPrompt(disease),
+          documentKnowledge: compactDocumentKnowledgeForPrompt(documentKnowledge).slice(0, 3),
+          structuredMedicalFacts: medicalFacts.hasActionableFacts ? compactMedicalFactsForPrompt(medicalFacts) : null,
+        },
+        currentReportContext: {
+          disease: patch.disease || ruleReport.disease,
+          treatment: patch.treatment || ruleReport.treatment,
+          concerns: patch.concerns || ruleReport.concerns,
+          hospitals: patch.hospitals || ruleReport.hospitals,
+          plan: {
+            direction: patch.plan?.direction || ruleReport.plan.direction,
+            duration: patch.plan?.duration || ruleReport.plan.duration,
+            totalCost: patch.plan?.totalCost || ruleReport.plan.totalCost,
+          },
+        },
+      })}`,
+    },
+  ]
+}
+
+const buildPackagePrompt = (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+  patch: FreeReportPatch,
+  previousError?: string,
+): MedicalLlmMessage[] => {
+  const { input, disease, diseaseKey, personalization, medicalFacts, documentKnowledge } = context
+  const careNeedLabel = getCareNeedLabel(input.basicInfo.careNeed, input.basicInfo.careNeedOther)
+  const expectedTreatmentTimeLabel = getExpectedTreatmentTimeLabel(input.basicInfo.expectedTreatmentTime)
+
+  return [
+    {
+      role: 'system',
+      content: [
+        '/no_think',
+        '你是寰宇云医简易预审报告的专业评估服务包内容生成助手。',
+        '你只生成适合当前病例的 packages JSON，不输出 Markdown，不解释。',
+        '不要推理，不要解释，直接输出严格 JSON。',
+        '所有权益、包含/不包含、脚注和 CTA 都必须根据用户主诉、资料完整度、就医诉求和预期时间生成。',
+        '不得承诺治愈、指定专家一定预约成功、VIP号源一定保留或保险一定报销。',
+      ].join('\n'),
+    },
+    {
+      role: 'user',
+      content: `/no_think\n${JSON.stringify({
+        task: '只生成简易报告的专业评估服务包 packages',
+        previousError: previousError ? `上一次输出未通过校验：${previousError}。请重新输出完整 packages，保持短句，确保三档各有 features 数组、featureDetails 数组且每档至少6项。` : '',
+        outputSchema: {
+          packages: {
+            description: '必填数组，必须恰好3项，由医疗大模型返回，不由系统补全。',
+            itemShape: '{name,subtitle,price,originalPrice?,badge?,cta,icon,highlight,features,featureDetails,footnote}',
+            tierRules: [
+              '第1项 name 必须是“基础评估包 / Basic”：适合已有资料、先获取书面方向判断；必须有 excluded 项“不含视频面诊”。',
+              '第2项 name 必须是“标准面诊包 / Standard”：适合希望与专家视频沟通并获得跟进答疑；必须有 emphasis 项突出专家视频面诊或跟进答疑。',
+              '第3项 name 必须是“深度面诊包 / Premium”：适合复杂病情、疑似复发转移或跨科室治疗决策；必须有 emphasis 项突出 MDT/多学科会诊。',
+            ],
+            detailRules: [
+              '每档 features 恰好3条短摘要，每条不超过18个汉字。',
+              '每档 featureDetails 至少6项，每项 {label,status}，status 只能是 included/excluded/emphasis；label 不超过28个汉字。',
+              '每档 subtitle 和 footnote 必须结合当前病例、资料限制、就医诉求和期望治疗时间，subtitle 不超过40个汉字，footnote 不超过55个汉字。',
+              'price、originalPrice、icon、highlight 可参考 servicePackageTierReference。',
+            ],
+          },
+        },
+        patientInput: {
+          locale: input.locale,
+          basicInfo: {
+            ...input.basicInfo,
+            careNeedLabel,
+            expectedTreatmentTimeLabel,
+            chiefComplaint: truncateForPrompt(input.basicInfo.chiefComplaint, 700),
+          },
+          selectedRegions: input.selectedRegions,
+          hasUploadedMedicalRecords: input.uploadedFiles.length > 0,
+        },
+        personalization,
+        matchedKnowledge: {
+          diseaseKey,
+          disease: compactDiseaseForPrompt(disease),
+          documentKnowledge: compactDocumentKnowledgeForPrompt(documentKnowledge).slice(0, 3),
+          structuredMedicalFacts: medicalFacts.hasActionableFacts
+            ? compactMedicalFactsForPrompt(medicalFacts)
+            : null,
+        },
+        generatedReportContext: {
+          disease: patch.disease || ruleReport.disease,
+          treatment: patch.treatment || ruleReport.treatment,
+          concerns: patch.concerns || ruleReport.concerns,
+          hospitals: patch.hospitals || ruleReport.hospitals,
+          plan: {
+            direction: patch.plan?.direction || ruleReport.plan.direction,
+            duration: patch.plan?.duration || ruleReport.plan.duration,
+            totalCost: patch.plan?.totalCost || ruleReport.plan.totalCost,
+          },
+        },
+        servicePackageTierReference: ruleReport.packages.map((pkg) => ({
+          name: pkg.name,
+          price: pkg.price,
+          originalPrice: pkg.originalPrice,
+          icon: pkg.icon,
+          highlight: pkg.highlight,
+          badge: pkg.badge,
+        })),
+        qualityRules: [
+          '返回 JSON 对象必须包含顶层 packages，不能放在 services、plans 或 highlights 下。',
+          '三档服务包的 subtitle、features、featureDetails、footnote 必须按当前病例重写；不得只照抄服务层级参考；所有文字用短句。',
+          'Basic 必须包含“不含视频面诊”的 excluded 明细；Standard 必须包含视频面诊/跟进答疑 emphasis；Premium 必须包含 MDT/多学科会诊 emphasis。',
+          diseaseKey === 'dental' ? `牙科方向只允许围绕${dentalPartner.name}和牙科主诉表达，不要写肿瘤MDT。` : '',
+        ].filter(Boolean),
+      })}`,
+    },
+  ]
+}
+
+const buildCostBreakdownPrompt = (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+  patch: FreeReportPatch,
+  previousError?: string,
+): MedicalLlmMessage[] => {
+  const { input, disease, diseaseKey } = context
+  const careNeedLabel = getCareNeedLabel(input.basicInfo.careNeed, input.basicInfo.careNeedOther)
+  const expectedTreatmentTimeLabel = getExpectedTreatmentTimeLabel(input.basicInfo.expectedTreatmentTime)
+  const plan = {
+    direction: patch.plan?.direction || ruleReport.plan.direction,
+    duration: patch.plan?.duration || ruleReport.plan.duration,
+    totalCost: patch.plan?.totalCost || ruleReport.plan.totalCost,
+    breakdown: patch.plan?.breakdown || ruleReport.plan.breakdown,
+  }
+  const countries = (patch.countries || ruleReport.countries).map((country) => ({
+    name: country.name,
+    fee: country.fee,
+    wait: country.wait,
+    recommended: country.recommended,
+  }))
+  const caseText = [
+    `疾病方向：${patch.disease || ruleReport.disease || disease.label}`,
+    `主诉：${truncateForPrompt(input.basicInfo.chiefComplaint, 520)}`,
+    `患者国家/城市：${input.basicInfo.nationality || '未填'} / ${input.basicInfo.city || '未填'}`,
+    `就医诉求：${careNeedLabel || '未填'}`,
+    `期望时间：${expectedTreatmentTimeLabel || '未填'}`,
+    `路径：${plan.direction}`,
+    `周期：${plan.duration}`,
+    `已有费用摘要：${plan.breakdown.map((item) => `${item.item}${item.cost}`).join('；')}`,
+    `国家对比：${countries.map((country) => `${country.name}${country.fee}`).join('；')}`,
+    diseaseKey === 'dental' ? `牙科限制：只围绕${dentalPartner.name}和牙科主诉估算，不要写肿瘤治疗费用。` : '',
+  ].filter(Boolean).join('\n')
+  const errorText = previousError
+    ? `\n上一次输出未通过校验：${previousError}。请重新输出完整 costBreakdown；有足够依据的费用用人民币和美元表达，依据不足的项目请写“资料不足，暂不估算/需医生确认”，不要为了通过格式校验编造金额。`
+    : ''
+  const schemaExample = {
+    costBreakdown: {
+      currencyNote: '按预审估算汇率约 ￥7.2 = $1 折算，最终以医院报价和付款日汇率为准',
+      coreMedical: { title: '核心医疗费用', subtotal: '￥xx（~$xx）', items: [{ item: '项目', cost: '￥xx（~$xx）', note: '说明' }], tip: '说明' },
+      supportServices: { title: '配套服务费用', subtotal: '￥xx（~$xx）', items: [{ item: '项目', cost: '￥xx（~$xx）', note: '说明' }], tip: '说明' },
+      living: { title: '生活费用', subtotal: '￥xx（~$xx）', items: [{ item: '项目', cost: '￥xx（~$xx）', note: '说明' }], tip: '说明' },
+      summary: { formula: '核心医疗￥xx + 配套服务￥xx + 生活费用￥xx = ￥xx（约$xx）', chinaTotal: '￥xx（约$xx）', referenceCountry: '本国或患者常住地国家/地区', referenceCost: '$xx,xxx', savingsPercent: 0, savingsText: 'vs 本国治疗$xx,xxx = 节省xx%/Save xx%' },
+    },
+  }
+
+  return [
+    {
+      role: 'system',
+      content: [
+        '/no_think',
+        '你是寰宇云医简易预审报告的跨境医疗费用拆分助手。',
+        '不要推理，不要解释，直接输出严格 JSON。',
+        '只输出一个 JSON 对象，顶层字段必须是 costBreakdown。',
+        '费用必须由你根据病例、治疗阶段、停留时间、患者常住地对照和给定费用摘要估算；系统和前端不会自行分类、补算或猜测。',
+        '资料不足是最后选项；能基于病例方向、治疗阶段、停留时间和地区对照给出审慎费用区间时，必须输出金额并标注“预估/需医生确认”。',
+        '只有资料完全不足以支撑某个项目金额时，才在对应费用字段写“资料不足，暂不估算/需医生确认”，不得编造价格。',
+        '费用区间要尽量收敛到当前病例可用范围，避免“几千到几十万”这类没有决策意义的超宽区间；如波动大，应拆分项目说明波动原因。',
+        '不得承诺最终医院报价、保险报销或固定疗效。',
+      ].join('\n'),
+    },
+    {
+      role: 'user',
+      content: [
+        '/no_think',
+        '只输出一个 JSON 对象，不要 Markdown，不要解释。',
+        '顶层字段必须是 costBreakdown。',
+        'coreMedical、supportServices、living 每类 items 至少4项。',
+        '能给出审慎区间的 cost/subtotal 使用“￥xxx（~$xxx）”格式；只在完全无法支撑时写“资料不足，暂不估算/需医生确认”。',
+        '每个费用项都要尽量给可用粒度的区间或量级，不能为了避免风险而全部写宽泛范围。',
+        'summary.formula 有足够金额时类似“核心医疗￥74,000 + 配套服务￥0 + 生活费用￥11,650 = ￥85,650（约$11,900）”；金额不足时写“资料不足，暂不计算”。',
+        'summary.savingsText 有足够对照费用时类似“vs 本国治疗$85,000 = 节省86%/Save 86%”；对照不足时写“资料不足，暂不计算节省比例/Save 暂不计算”。',
+        errorText,
+        `病例：\n${caseText}`,
+        `JSON样例字段：${JSON.stringify(schemaExample)}`,
+      ].filter(Boolean).join('\n'),
+    },
+  ]
+}
+
+const buildAdvancedCarePrompt = (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+  patch: FreeReportPatch,
+  previousError?: string,
+): MedicalLlmMessage[] => {
+  const { input, disease, diseaseKey, personalization, medicalFacts, documentKnowledge } = context
+  const careNeedLabel = getCareNeedLabel(input.basicInfo.careNeed, input.basicInfo.careNeedOther)
+  const expectedTreatmentTimeLabel = getExpectedTreatmentTimeLabel(input.basicInfo.expectedTreatmentTime)
+  const diseaseLabel = patch.disease || ruleReport.disease || disease.label
+  const treatment = patch.treatment || ruleReport.treatment
+  const plan = {
+    direction: patch.plan?.direction || ruleReport.plan.direction,
+    duration: patch.plan?.duration || ruleReport.plan.duration,
+    totalCost: patch.plan?.totalCost || ruleReport.plan.totalCost,
+    breakdown: patch.plan?.breakdown || ruleReport.plan.breakdown,
+  }
+  const countries = (patch.countries || ruleReport.countries).map((country) => ({
+    name: country.name,
+    fee: country.fee,
+    wait: country.wait,
+    tech: country.tech,
+    recommended: country.recommended,
+  }))
+  const caseText = [
+    `疾病方向：${diseaseLabel}`,
+    `治疗摘要：${truncateForPrompt(treatment, 520)}`,
+    `主诉：${truncateForPrompt(input.basicInfo.chiefComplaint, 700)}`,
+    `患者国家/城市：${input.basicInfo.nationality || '未填'} / ${input.basicInfo.city || '未填'}`,
+    `就医诉求：${careNeedLabel || '未填'}`,
+    `期望时间：${expectedTreatmentTimeLabel || '未填'}`,
+    `路径：${plan.direction}`,
+    `周期：${plan.duration}`,
+    `费用摘要：${plan.breakdown.map((item) => `${item.item}${item.cost}`).join('；')}`,
+    `国家对比：${countries.map((country) => `${country.name}${country.fee}`).join('；')}`,
+    diseaseKey === 'dental' ? `牙科限制：如当前病例不适合药品/新药治愈判断，也必须由你在对应字段说明“不适用/暂无药物治愈问题”，不要编造肿瘤药物。` : '',
+  ].filter(Boolean).join('\n')
+  const errorText = previousError
+    ? `\n上一次输出未通过校验：${previousError}。请重新输出完整 advancedCare，三块内容都必须存在，不能空数组，金额尽量使用“￥xxx（~$xxx）”。`
+    : ''
+  const schemaExample = {
+    advancedCare: {
+      context: '基于用户信息说明本节适用前提',
+      currencyNote: '按预审估算汇率约 ￥7.2 = $1 折算，最终以医院报价和付款日汇率为准',
+      therapies: [{
+        name: '疗法名称，由模型按当前病例选择；不适用时写审慎评估名称',
+        category: '治疗类别',
+        recommendationLevel: '优先评估/可讨论/暂不优先/资料不足',
+        summary: '一句话价值',
+        applicableFor: '适用人群或本例触发条件',
+        mechanism: '作用机制或治疗逻辑',
+        chinaAccess: '中国可及性、医院/中心能力或需要预审的入口',
+        estimatedCost: '￥xx（~$xx）',
+        referenceCost: '$xx,xxx 或 ￥xx（~$xx）',
+        advantage: '中国方案优势或价格/等待/可及性优势',
+        evidence: '证据依据或需要确认的生物标志物/分期前提',
+        limitations: '局限与风险，不能承诺疗效',
+        nextStep: '下一步应补充的资料或医生复核动作',
+        tags: ['可选短标签'],
+      }],
+      drugCostComparison: {
+        title: '药品费用对比 - 同等疗效候选方案',
+        basis: '说明同等疗效比较的医学前提，例如同类药、仿制药一致性评价、生物类似药、指南等；不确定时说明需医生确认',
+        summary: '概括药费差异和适用限制',
+        items: [{
+          drugName: '药品/药物类别名称，必须按当前病例选择；无适用药物时写“暂无明确适用药物”',
+          drugClass: '药物类别',
+          chinaOption: '中国可选原研/仿制/生物类似药/集采方案',
+          referenceOption: '患者本国或国际市场对照',
+          chinaCost: '￥xx（~$xx）',
+          referenceCost: '$xx,xxx',
+          efficacyEquivalence: '同等疗效前提和证据限制',
+          savingInsight: '节省或价格优势说明',
+          eligibility: '需要满足的检测/分期/医生判断',
+          note: '可选说明',
+        }],
+        note: '不替代处方，需医生确认适应证、禁忌证和报销/采购可及性',
+      },
+      newDrugCureAssessment: {
+        headline: '是否有新药可治愈?',
+        answer: '必须医学审慎，不能承诺治愈；可写“暂无可承诺治愈的新药，目标是控制/缓解/延长生存”等',
+        summary: '结合当前病例说明新药或临床研究的现实目标',
+        items: [{
+          name: '新药/药物类别/临床研究方向',
+          type: '靶向/免疫/ADC/细胞治疗/小分子/不适用等',
+          applicableFor: '适用前提',
+          evidence: '证据或指南/研究方向概述',
+          chinaAvailability: '中国可及性或需预审确认',
+          potentialRole: '可能作用：控制、缓解、降低复发风险、姑息等',
+          limitations: '不能治愈或证据不足的原因/毒性/耐药',
+          nextStep: '检测或医生复核动作',
+        }],
+        ctaItems: ['建议补充的检测/资料/医生复核事项'],
+      },
+      disclaimer: '医学审慎声明',
+    },
+  }
+
+  return [
+    {
+      role: 'system',
+      content: [
+        '/no_think',
+        '你是寰宇云医简易预审报告的前沿疗法、新药和药品费用分析助手。',
+        '不要推理，不要解释，直接输出严格 JSON。',
+        '只输出一个 JSON 对象，顶层字段必须是 advancedCare。',
+        '具体疗法、药物、费用、同等疗效前提、新药治愈判断必须由你根据当前用户信息生成；系统和前端不会自行补药名、补疗法或补医学判断。',
+        '不得照搬示例疾病内容；不得为了凑数编造不适合当前病例的药物或疗法。',
+        '不得承诺治愈、固定疗效、临床研究入组成功、药品一定可买到或医院一定接诊。',
+      ].join('\n'),
+    },
+    {
+      role: 'user',
+      content: [
+        '/no_think',
+        '只输出一个 JSON 对象，不要 Markdown，不要解释。',
+        '顶层字段必须是 advancedCare。',
+        'advancedCare.therapies 1-2项；必须包含 estimatedCost，金额尽量使用“￥xxx（~$xxx）”；每个文本字段用短句。',
+        'advancedCare.drugCostComparison.items 1-2项；必须说明“同等疗效”的前提，如同类药/仿制药一致性评价/生物类似药/指南适应证/证据限制；每个文本字段用短句。',
+        'advancedCare.newDrugCureAssessment.items 1-2项；answer 必须审慎，不能写“可以治愈/保证治愈/根治”；每个文本字段用短句。',
+        '资料不足不是默认答案；能基于病种方向、主诉、既往治疗和常见证据前提给出可讨论方向时，必须返回审慎的疗法/药物类别，并写清适用前提和需补充检测。',
+        '如果当前病例是牙科、体检或确实不适用药物/新药治愈判断，不要编造肿瘤新药；请用字段说明“不适用/暂无足够信息/需补充分型或检测”，但仍返回完整结构。',
+        errorText,
+        `病例：\n${caseText}`,
+        `个性化约束：${JSON.stringify({
+          personalization,
+          matchedKnowledge: {
+            diseaseKey,
+            disease: compactDiseaseForPrompt(disease),
+            documentKnowledge: compactDocumentKnowledgeForPrompt(documentKnowledge).slice(0, 3),
+            structuredMedicalFacts: medicalFacts.hasActionableFacts
+              ? compactMedicalFactsForPrompt(medicalFacts)
+              : null,
+          },
+          hasUploadedMedicalRecords: input.uploadedFiles.length > 0,
+        })}`,
+        `JSON样例字段：${JSON.stringify(schemaExample)}`,
+      ].filter(Boolean).join('\n'),
+    },
+  ]
+}
+
+const buildSupplementalPatchPrompt = (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+): MedicalLlmMessage[] => {
+  const { input, disease, diseaseKey, personalization, medicalFacts, documentKnowledge } = context
+  const careNeedLabel = getCareNeedLabel(input.basicInfo.careNeed, input.basicInfo.careNeedOther)
+  const expectedTreatmentTimeLabel = getExpectedTreatmentTimeLabel(input.basicInfo.expectedTreatmentTime)
+  const caseText = [
+    `疾病方向：${ruleReport.disease || disease.label}`,
+    `治疗摘要：${truncateForPrompt(ruleReport.treatment, 520)}`,
+    `主诉：${truncateForPrompt(input.basicInfo.chiefComplaint, 700)}`,
+    `患者国家/城市：${input.basicInfo.nationality || '未填'} / ${input.basicInfo.city || '未填'}`,
+    `就医诉求：${careNeedLabel || '未填'}`,
+    `期望时间：${expectedTreatmentTimeLabel || '未填'}`,
+    `路径：${ruleReport.plan.direction}`,
+    `周期：${ruleReport.plan.duration}`,
+    `已有费用摘要：${ruleReport.plan.breakdown.map((item) => `${item.item}${item.cost}`).join('；')}`,
+    `国家对比：${ruleReport.countries.map((country) => `${country.name}${country.fee}`).join('；')}`,
+    diseaseKey === 'dental' ? `牙科限制：只围绕${dentalPartner.name}和牙科主诉表达，不要写肿瘤治疗、肿瘤MDT或肿瘤药物。` : '',
+  ].filter(Boolean).join('\n')
+
+  return [
+    {
+      role: 'system',
+      content: [
+        '/no_think',
+        '你是寰宇云医简易预审报告的费用、服务包、前沿疗法合并生成助手。',
+        '你只生成当前病例的 supplemental JSON，不输出 Markdown，不解释。',
+        '所有费用、服务包权益、前沿疗法、药品费用对比、新药治愈判断都必须由你根据当前用户信息生成。',
+        '系统和前端不会自行补药名、补疗法、补费用或补服务内容；资料不足是最后选项，能审慎估算或给待确认条件时必须由你返回。',
+        '拿不准精确数值时，用区间、量级和“需医生确认”表达；只有完全无法支撑时才写资料不足/不适用。',
+        '输出要能帮助用户比较选择，不能全部写成泛泛的“需确认”；疗法、药品、费用和适用前提都要尽量具体到当前病例方向。',
+        '不得承诺治愈、固定疗效、指定专家一定预约成功、VIP号源一定保留、保险一定报销或临床研究一定入组。',
+      ].join('\n'),
+    },
+    {
+      role: 'user',
+      content: `/no_think\n${JSON.stringify({
+        task: '一次性生成简易报告 supplemental JSON',
+        requiredTopLevelKeys: ['costBreakdown', 'advancedCare'],
+        outputSchema: {
+          costBreakdown: {
+            currencyNote: '按预审估算汇率约 ￥7.2 = $1 折算，最终以医院报价和付款日汇率为准',
+            coreMedical: {
+              title: '核心医疗费用',
+              subtotal: '￥xx（~$xx）',
+              items: [
+                { item: '诊断复核/专家会诊', cost: '￥xx（~$xx）', note: '说明' },
+                { item: '影像/病理/分子检测', cost: '￥xx（~$xx）', note: '说明' },
+                { item: '主要治疗项目', cost: '￥xx（~$xx）', note: '说明' },
+                { item: '药物/住院/日间治疗', cost: '￥xx（~$xx）', note: '说明' },
+              ],
+              tip: '说明',
+            },
+            supportServices: {
+              title: '配套服务费用',
+              subtotal: '￥xx（~$xx）',
+              items: [
+                { item: '资料翻译与病历整理', cost: '￥xx（~$xx）', note: '说明' },
+                { item: '医院预约与预审协调', cost: '￥xx（~$xx）', note: '说明' },
+                { item: '陪诊/口译支持', cost: '￥xx（~$xx）', note: '说明' },
+                { item: '远程复诊/随访协调', cost: '￥xx（~$xx）', note: '说明' },
+              ],
+              tip: '说明',
+            },
+            living: {
+              title: '生活费用',
+              subtotal: '￥xx（~$xx）',
+              items: [
+                { item: '住宿', cost: '￥xx（~$xx）', note: '说明' },
+                { item: '市内交通', cost: '￥xx（~$xx）', note: '说明' },
+                { item: '餐饮与日常开销', cost: '￥xx（~$xx）', note: '说明' },
+                { item: '签证/保险/备用金', cost: '￥xx（~$xx）', note: '说明' },
+              ],
+              tip: '说明',
+            },
+            summary: { formula: '核心医疗￥xx + 配套服务￥xx + 生活费用￥xx = ￥xx（约$xx）', chinaTotal: '￥xx（约$xx）', referenceCountry: '本国或患者常住地国家/地区', referenceCost: '$xx,xxx', savingsPercent: 0, savingsText: 'vs 本国治疗$xx,xxx = 节省xx%/Save xx%' },
+          },
+          advancedCare: {
+            context: '基于用户信息说明本节适用前提',
+            currencyNote: '汇率和报价说明',
+            therapies: [{
+              name: '疗法名称；不适用时写审慎评估名称',
+              category: '治疗类别',
+              recommendationLevel: '优先评估/可讨论/暂不优先/资料不足',
+              summary: '一句话价值',
+              applicableFor: '适用人群或本例触发条件',
+              mechanism: '作用机制或治疗逻辑',
+              chinaAccess: '中国可及性或需预审入口',
+              estimatedCost: '￥xx（~$xx）',
+              referenceCost: '$xx 或资料不足',
+              advantage: '中国方案优势或价格/等待/可及性优势',
+              evidence: '证据依据或需要确认的前提',
+              limitations: '局限与风险，不能承诺疗效',
+              nextStep: '下一步补充资料或医生复核动作',
+              tags: ['可选短标签'],
+            }],
+            drugCostComparison: {
+              title: '药品费用对比 - 同等疗效候选方案',
+              basis: '同等疗效比较前提，例如同类药、仿制药一致性评价、生物类似药、指南适应证、证据限制或需医生确认',
+              summary: '概括药费差异和适用限制',
+              items: [{
+                drugName: '药品/药物类别；无适用药物时写“暂无明确适用药物”',
+                drugClass: '药物类别',
+                chinaOption: '中国可选原研/仿制/生物类似药/集采方案',
+                referenceOption: '患者本国或国际市场对照',
+                chinaCost: '￥xx（~$xx）或不适用',
+                referenceCost: '$xx,xxx 或资料不足',
+                efficacyEquivalence: '同等疗效前提和证据限制',
+                savingInsight: '节省或价格优势说明',
+                eligibility: '需要满足的检测/分期/医生判断',
+                note: '可选说明',
+              }],
+              note: '不替代处方，需医生确认适应证、禁忌证和报销/采购可及性',
+            },
+            newDrugCureAssessment: {
+              headline: '是否有新药可治愈?',
+              answer: '必须医学审慎，不能承诺治愈',
+              summary: '结合当前病例说明新药或临床研究现实目标',
+              items: [{
+                name: '新药/药物类别/临床研究方向',
+                type: '靶向/免疫/ADC/细胞治疗/小分子/不适用等',
+                applicableFor: '适用前提',
+                evidence: '证据或指南/研究方向概述',
+                chinaAvailability: '中国可及性或需预审确认',
+                potentialRole: '可能作用：控制、缓解、降低复发风险、姑息等',
+                limitations: '不能治愈或证据不足的原因/毒性/耐药',
+                nextStep: '检测或医生复核动作',
+              }],
+              ctaItems: ['建议补充的检测/资料/医生复核事项'],
+            },
+            disclaimer: '医学审慎声明',
+          },
+        },
+        hardRules: [
+          'costBreakdown 三类 items 均必须输出至少3项，不能把多个项目合并成“其他费用”一项；有依据的 cost 给出可解析金额，可写人民币、美元或两者，例如“约8万人民币”“$11,100”“￥80,000（~$11,100）”。',
+          '若用户资料或医学依据不足以支撑精确金额，不要编造精确价格；能给审慎区间时必须给区间并标注需医生确认，完全无法支撑时才写“资料不足，暂不估算/需医生确认”。',
+          '费用区间不能过度保守到失去意义；尽量根据项目拆分、治疗强度和停留时间收敛区间。',
+          'summary.referenceCost 有依据时给出患者本国治疗参考费用；summary.formula、chinaTotal、savingsText 可简写，后端会基于你给出的费用数据统一拼装展示公式和节省比例。若依据不足，写“资料不足，暂不计算”。',
+          '本次 supplemental 不输出 packages，服务包由并行主报告 patch 生成；不要在本 JSON 中添加 packages 字段。',
+          'advancedCare.therapies、drugCostComparison.items、newDrugCureAssessment.items 各1-2项；不适用时也返回完整结构并解释不适用。',
+          'advancedCare 内所有字符串字段都必须是非空字符串；如果无法判断，不要返回空字符串、null 或省略字段，必须写“资料不足，需医生确认”或“当前病例不适用，并说明原因”。',
+          'newDrugCureAssessment.ctaItems 至少1项且每项非空；disclaimer、context、currencyNote、basis、note 都必须非空。',
+          '返回前自检：costBreakdown 三类明细数>=4，advancedCare 所有必填字符串非空。',
+          'drugCostComparison 必须说明“同等疗效”的医学前提或资料不足/需医生确认。',
+          'newDrugCureAssessment.answer 不得写“可以治愈/保证治愈/根治”。',
+        ],
+        patientInput: {
+          locale: input.locale,
+          basicInfo: {
+            ...input.basicInfo,
+            careNeedLabel,
+            expectedTreatmentTimeLabel,
+            chiefComplaint: truncateForPrompt(input.basicInfo.chiefComplaint, 700),
+          },
+          selectedRegions: input.selectedRegions,
+          hasUploadedMedicalRecords: input.uploadedFiles.length > 0,
+        },
+        personalization,
+        matchedKnowledge: {
+          diseaseKey,
+          disease: compactDiseaseForPrompt(disease),
+          documentKnowledge: compactDocumentKnowledgeForPrompt(documentKnowledge).slice(0, 3),
+          structuredMedicalFacts: medicalFacts.hasActionableFacts ? compactMedicalFactsForPrompt(medicalFacts) : null,
+        },
+        generatedReportBaseline: {
+          disease: ruleReport.disease,
+          treatment: ruleReport.treatment,
+          concerns: ruleReport.concerns,
+          hospitals: ruleReport.hospitals,
+          plan: ruleReport.plan,
+        },
+        caseText,
+      })}`,
     },
   ]
 }
 
 const extractJson = (content: string) => {
   const trimmed = content.trim()
-  if (trimmed.startsWith('{')) return trimmed
-  const match = trimmed.match(/\{[\s\S]*\}/)
-  return match ? match[0] : trimmed
+  const start = trimmed.indexOf('{')
+  if (start < 0) return trimmed
+
+  let depth = 0
+  let inString = false
+  let escaped = false
+  for (let index = start; index < trimmed.length; index += 1) {
+    const char = trimmed[index]
+    if (escaped) {
+      escaped = false
+      continue
+    }
+    if (char === '\\') {
+      escaped = true
+      continue
+    }
+    if (char === '"') {
+      inString = !inString
+      continue
+    }
+    if (inString) continue
+    if (char === '{') depth += 1
+    if (char === '}') {
+      depth -= 1
+      if (depth === 0) return trimmed.slice(start, index + 1)
+    }
+  }
+
+  return trimmed.slice(start)
+}
+
+const parseLlmJson = (content: string) => {
+  const jsonText = extractJson(content)
+  try {
+    return JSON.parse(jsonText) as unknown
+  } catch (parseError) {
+    try {
+      return JSON.parse(jsonrepair(jsonText)) as unknown
+    } catch (repairError) {
+      throw new Error(`LLM JSON parse failed: ${sanitizeGenerationError(parseError)}; repair failed: ${sanitizeGenerationError(repairError)}`)
+    }
+  }
+}
+
+const nonEmptyArray = <T>(value: T[] | undefined) => (Array.isArray(value) && value.length ? value : undefined)
+
+const getLlmPackageItems = (value: LlmPatchEnvelope) => (
+  nonEmptyArray(value.packages) ||
+  nonEmptyArray(value.servicePackages) ||
+  nonEmptyArray(value.professionalPackages) ||
+  nonEmptyArray(value.professionalServicePackages) ||
+  nonEmptyArray(value.evaluationPackages)
+)
+
+const getLlmCostBreakdown = (value: LlmPatchEnvelope) => (
+  value.plan?.costBreakdown ||
+  value.costBreakdown ||
+  value.cost_breakdown ||
+  value.costDetails ||
+  value.cost_breakdown_details ||
+  value.detailedCosts ||
+  value.detailedCostBreakdown ||
+  value.detailed_cost_breakdown
+)
+
+type AdvancedCare = NonNullable<GeneratedReport['advancedCare']>
+type DetailedCostBreakdown = NonNullable<GeneratedReport['plan']['costBreakdown']>
+
+const getLlmAdvancedCare = (value: LlmPatchEnvelope & Partial<AdvancedCare>) => (
+  value.advancedCare ||
+  value.frontierCare ||
+  value.advancedTherapies ||
+  value.advancedTherapyRecommendations ||
+  value.frontierTherapyRecommendations ||
+  value.drugAndTherapyInsights ||
+  (Array.isArray(value.therapies) && value.drugCostComparison && value.newDrugCureAssessment
+    ? value as AdvancedCare
+    : undefined)
+)
+
+const dropNullFields = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(dropNullFields)
+  if (!value || typeof value !== 'object') return value
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, entryValue]) => entryValue !== null)
+      .map(([key, entryValue]) => [key, dropNullFields(entryValue)]),
+  )
+}
+
+const normalizePackageFeatureStatus = (value: unknown, label?: unknown) => {
+  const labelText = typeof label === 'string' ? label : ''
+  const normalized = typeof value === 'string' ? value.toLowerCase() : ''
+  if (normalized.includes('excluded')) return 'excluded'
+  if (normalized.includes('emphasis')) return 'emphasis'
+  if (normalized.includes('included')) return 'included'
+  if (/不含|无|未包含|不包括|不安排|no\s+video|without/i.test(labelText) && /视频|面诊|video|consult/i.test(labelText)) return 'excluded'
+  if (/视频|面诊|答疑|跟进|MDT|多学科|会诊/i.test(labelText) && /重点|突出|emphasis|优先/i.test(`${normalized} ${labelText}`)) return 'emphasis'
+  if (typeof value !== 'string') return value
+  return value
+}
+
+const normalizeStringList = (value: unknown) => {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
+  if (typeof value === 'string' && value.trim()) return value.split(/[；;、\n]/).map((item) => item.trim()).filter(Boolean)
+  return []
+}
+
+const normalizeLlmPackageItems = (packageItems?: GeneratedReport['packages']) => packageItems?.map((pkg) => {
+  const rawPackage = pkg as GeneratedReport['packages'][number] & { featureDetails?: unknown; features?: unknown }
+  const rawFeatures = normalizeStringList(rawPackage.features)
+  const rawFeatureDetails = Array.isArray(rawPackage.featureDetails)
+    ? rawPackage.featureDetails.map((feature) => ({
+      ...feature,
+      status: normalizePackageFeatureStatus((feature as { status?: unknown }).status, (feature as { label?: unknown }).label) as 'included' | 'excluded' | 'emphasis' | undefined,
+    }))
+    : undefined
+  const featuresFromDetails = (rawFeatureDetails || [])
+    .map((feature) => normalizeOptionalString((feature as { label?: unknown }).label)?.trim())
+    .filter((feature): feature is string => Boolean(feature))
+  const features = rawFeatures.length >= 3
+    ? rawFeatures
+    : unique([...rawFeatures, ...featuresFromDetails]).slice(0, Math.max(3, rawFeatures.length))
+  const promotedFeatureDetails = rawFeatures
+    .map((feature) => ({
+      label: feature,
+      status: (normalizePackageFeatureStatus(undefined, feature) || 'included') as 'included' | 'excluded' | 'emphasis',
+    }))
+    .filter((feature) => !rawFeatureDetails?.some((detail) => (
+      typeof (detail as { label?: unknown }).label === 'string' &&
+      normalizeText((detail as { label: string }).label).includes(normalizeText(feature.label))
+    )))
+  const featureDetails = rawFeatureDetails || promotedFeatureDetails.length
+    ? [...(rawFeatureDetails || []), ...promotedFeatureDetails]
+    : undefined
+
+  return {
+    ...pkg,
+    features,
+    featureDetails,
+  }
+})
+
+const normalizeOptionalString = (value: unknown) => {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return undefined
+}
+
+const normalizeOptionalScore = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.min(100, Math.round(value)))
+  if (typeof value === 'string') {
+    const match = value.match(/\d{1,3}/)
+    if (match) return Math.max(0, Math.min(100, Number(match[0])))
+  }
+  return undefined
+}
+
+const normalizeRequiredString = (value: unknown) => {
+  const normalized = normalizeOptionalString(value)
+  return normalized ? normalized.replace(/¥/g, '￥').trim() : ''
+}
+
+const COST_EXCHANGE_RATE = 7.2
+
+const formatInteger = (value: number) => Math.max(0, Math.round(value)).toLocaleString('en-US')
+const formatCny = (value: number) => `￥${formatInteger(value)}`
+const formatUsd = (value: number) => `$${formatInteger(value)}`
+
+type ParsedMoney = {
+  cny?: number
+  usd?: number
+}
+
+const averageRange = (first?: number, second?: number) => {
+  if (typeof first !== 'number' || Number.isNaN(first)) return undefined
+  if (typeof second !== 'number' || Number.isNaN(second)) return first
+  return (first + second) / 2
+}
+
+const parsePlainNumber = (value?: string) => {
+  if (!value) return undefined
+  const normalized = value.replace(/,/g, '')
+  const number = Number(normalized)
+  return Number.isFinite(number) ? number : undefined
+}
+
+const parseMoneyPair = (value?: string): ParsedMoney => {
+  const text = (value || '').replace(/¥/g, '￥').replace(/\s+/g, ' ')
+  const cnySymbol = text.match(/[￥]\s*([\d,.]+)\s*(万)?(?:\s*(?:-|~|到|至)\s*[￥]?\s*([\d,.]+)\s*(万)?)?/i)
+  const cnyText = text.match(/(?:人民币|RMB|CNY)\s*([\d,.]+)\s*(万)?(?:\s*(?:-|~|到|至)\s*([\d,.]+)\s*(万)?)?/i) ||
+    text.match(/([\d,.]+)\s*(万)?\s*(?:元人民币|人民币|元|RMB|CNY)/i)
+  const usdSymbol = text.match(/\$\s*([\d,.]+)\s*(万)?(?:\s*(?:-|~|到|至)\s*\$?\s*([\d,.]+)\s*(万)?)?/i)
+  const usdText = text.match(/(?:USD|美元)\s*([\d,.]+)\s*(万)?(?:\s*(?:-|~|到|至)\s*([\d,.]+)\s*(万)?)?/i) ||
+    text.match(/([\d,.]+)\s*(万)?\s*(?:美元|USD)/i)
+
+  const readMatch = (match: RegExpMatchArray | null) => {
+    if (!match) return undefined
+    const first = parsePlainNumber(match[1])
+    const second = parsePlainNumber(match[3])
+    const firstUnit = match[2] === '万' ? 10000 : 1
+    const secondUnit = match[4] === '万' ? 10000 : firstUnit
+    return averageRange(
+      typeof first === 'number' ? first * firstUnit : undefined,
+      typeof second === 'number' ? second * secondUnit : undefined,
+    )
+  }
+
+  const cny = readMatch(cnySymbol) ?? readMatch(cnyText)
+  const usd = readMatch(usdSymbol) ?? readMatch(usdText)
+  return {
+    cny: cny ?? (typeof usd === 'number' ? usd * COST_EXCHANGE_RATE : undefined),
+    usd: usd ?? (typeof cny === 'number' ? cny / COST_EXCHANGE_RATE : undefined),
+  }
+}
+
+const hasParsedMoney = (value?: string) => {
+  const parsed = parseMoneyPair(value)
+  return typeof parsed.cny === 'number' || typeof parsed.usd === 'number'
+}
+
+const hasMoneyPair = (value: ParsedMoney): value is ParsedMoney & ({ cny: number } | { usd: number }) => (
+  typeof value.cny === 'number' || typeof value.usd === 'number'
+)
+
+const formatMoneyPair = (parsed: ParsedMoney, fallback?: string) => {
+  const cny = parsed.cny ?? (typeof parsed.usd === 'number' ? parsed.usd * COST_EXCHANGE_RATE : undefined)
+  const usd = typeof cny === 'number'
+    ? cny / COST_EXCHANGE_RATE
+    : parsed.usd
+  if (typeof cny !== 'number' || typeof usd !== 'number') return normalizeRequiredString(fallback)
+  return `${formatCny(cny)}（~${formatUsd(usd)}）`
+}
+
+const sumMoneyPairs = (items: ParsedMoney[]): ParsedMoney => {
+  const moneyItems = items.filter(hasMoneyPair)
+  if (!moneyItems.length) return {}
+  const cny = moneyItems.reduce((sum, item) => sum + (item.cny ?? (typeof item.usd === 'number' ? item.usd * COST_EXCHANGE_RATE : 0)), 0)
+  const usd = moneyItems.reduce((sum, item) => sum + (item.usd ?? (typeof item.cny === 'number' ? item.cny / COST_EXCHANGE_RATE : 0)), 0)
+  return { cny, usd }
+}
+
+const normalizeLlmCostBreakdown = (
+  costBreakdown?: GeneratedReport['plan']['costBreakdown'],
+): GeneratedReport['plan']['costBreakdown'] | undefined => {
+  if (!costBreakdown) return undefined
+
+  const normalizeCategory = (category: DetailedCostBreakdown['coreMedical']) => {
+    const normalizedItems = category.items.map((item) => {
+      const parsed = parseMoneyPair(item.cost)
+      return {
+        ...item,
+        item: normalizeRequiredString(item.item),
+        cost: formatMoneyPair(parsed, item.cost),
+        note: normalizeOptionalString(item.note)?.trim(),
+      }
+    })
+    const itemTotals = normalizedItems.map((item) => parseMoneyPair(item.cost))
+    const subtotal = parseMoneyPair(category.subtotal)
+    const subtotalFromItems = sumMoneyPairs(itemTotals)
+    const normalizedSubtotal = hasMoneyPair(subtotal)
+      ? subtotal
+      : subtotalFromItems
+    return {
+      ...category,
+      title: normalizeRequiredString(category.title),
+      subtotal: formatMoneyPair(normalizedSubtotal, category.subtotal),
+      items: normalizedItems,
+      tip: normalizeOptionalString(category.tip)?.trim(),
+      subtotalPair: normalizedSubtotal,
+    }
+  }
+
+  const coreMedical = normalizeCategory(costBreakdown.coreMedical)
+  const supportServices = normalizeCategory(costBreakdown.supportServices)
+  const living = normalizeCategory(costBreakdown.living)
+  const total = sumMoneyPairs([coreMedical.subtotalPair, supportServices.subtotalPair, living.subtotalPair])
+  const referenceMoney = parseMoneyPair(costBreakdown.summary.referenceCost || costBreakdown.summary.savingsText)
+  const totalHasMoney = hasMoneyPair(total)
+  const referenceHasMoney = hasMoneyPair(referenceMoney)
+  const chinaUsd = total.usd ?? (typeof total.cny === 'number' ? total.cny / COST_EXCHANGE_RATE : undefined)
+  const savingsPercent = referenceHasMoney && typeof referenceMoney.usd === 'number' && typeof chinaUsd === 'number' && referenceMoney.usd > chinaUsd
+    ? Math.max(0, Math.min(99, Math.round((1 - chinaUsd / referenceMoney.usd) * 100)))
+    : typeof costBreakdown.summary.savingsPercent === 'number'
+      ? costBreakdown.summary.savingsPercent
+      : 0
+
+  return {
+    currencyNote: normalizeRequiredString(costBreakdown.currencyNote) || `按预审估算汇率约 ￥${COST_EXCHANGE_RATE} = $1 折算，最终以医院报价和付款日汇率为准`,
+    coreMedical: {
+      title: coreMedical.title,
+      subtotal: coreMedical.subtotal,
+      items: coreMedical.items,
+      tip: coreMedical.tip,
+    },
+    supportServices: {
+      title: supportServices.title,
+      subtotal: supportServices.subtotal,
+      items: supportServices.items,
+      tip: supportServices.tip,
+    },
+    living: {
+      title: living.title,
+      subtotal: living.subtotal,
+      items: living.items,
+      tip: living.tip,
+    },
+    summary: {
+      formula: totalHasMoney
+        ? `核心医疗${formatCny(coreMedical.subtotalPair.cny || 0)} + 配套服务${formatCny(supportServices.subtotalPair.cny || 0)} + 生活费用${formatCny(living.subtotalPair.cny || 0)} = ${formatCny(total.cny || 0)}（约${formatUsd(total.usd || 0)}）`
+        : normalizeRequiredString(costBreakdown.summary.formula),
+      chinaTotal: totalHasMoney
+        ? `${formatCny(total.cny || 0)}（约${formatUsd(total.usd || 0)}）`
+        : normalizeRequiredString(costBreakdown.summary.chinaTotal),
+      referenceCountry: normalizeRequiredString(costBreakdown.summary.referenceCountry) || '本国或患者常住地国家/地区',
+      referenceCost: referenceHasMoney && typeof referenceMoney.usd === 'number'
+        ? formatUsd(referenceMoney.usd)
+        : normalizeRequiredString(costBreakdown.summary.referenceCost),
+      savingsPercent,
+      savingsText: referenceHasMoney && typeof referenceMoney.usd === 'number' && totalHasMoney
+        ? `vs 本国治疗${formatUsd(referenceMoney.usd)} = 节省${savingsPercent}%/Save ${savingsPercent}%`
+        : normalizeRequiredString(costBreakdown.summary.savingsText),
+    },
+  }
+}
+
+const normalizeAdvancedCare = (advancedCare?: AdvancedCare): AdvancedCare | undefined => {
+  if (!advancedCare) return undefined
+  const rawCare = advancedCare as AdvancedCare & {
+    therapies?: unknown
+    drugCostComparison?: unknown
+    newDrugCureAssessment?: unknown
+    ctaItems?: unknown
+  }
+  const drugCostComparison = rawCare.drugCostComparison as AdvancedCare['drugCostComparison'] & { items?: unknown } | undefined
+  const newDrugCureAssessment = rawCare.newDrugCureAssessment as AdvancedCare['newDrugCureAssessment'] & { items?: unknown; ctaItems?: unknown } | undefined
+
+  return {
+    context: normalizeRequiredString(rawCare.context),
+    currencyNote: normalizeRequiredString(rawCare.currencyNote),
+    therapies: Array.isArray(rawCare.therapies)
+      ? rawCare.therapies.map((therapy) => {
+        const rawTherapy = therapy as AdvancedCare['therapies'][number] & { tags?: unknown }
+        return {
+          name: normalizeRequiredString(rawTherapy.name),
+          category: normalizeRequiredString(rawTherapy.category),
+          recommendationLevel: normalizeRequiredString(rawTherapy.recommendationLevel),
+          summary: normalizeRequiredString(rawTherapy.summary),
+          applicableFor: normalizeRequiredString(rawTherapy.applicableFor),
+          mechanism: normalizeRequiredString(rawTherapy.mechanism),
+          chinaAccess: normalizeRequiredString(rawTherapy.chinaAccess),
+          estimatedCost: normalizeRequiredString(rawTherapy.estimatedCost),
+          referenceCost: normalizeOptionalString(rawTherapy.referenceCost)?.trim(),
+          advantage: normalizeRequiredString(rawTherapy.advantage),
+          evidence: normalizeRequiredString(rawTherapy.evidence),
+          limitations: normalizeRequiredString(rawTherapy.limitations),
+          nextStep: normalizeRequiredString(rawTherapy.nextStep),
+          tags: normalizeStringList(rawTherapy.tags),
+        }
+      })
+      : [],
+    drugCostComparison: {
+      title: normalizeRequiredString(drugCostComparison?.title),
+      basis: normalizeRequiredString(drugCostComparison?.basis),
+      summary: normalizeRequiredString(drugCostComparison?.summary),
+      items: Array.isArray(drugCostComparison?.items)
+        ? drugCostComparison.items.map((item) => {
+          const rawItem = item as AdvancedCare['drugCostComparison']['items'][number]
+          return {
+            drugName: normalizeRequiredString(rawItem.drugName),
+            drugClass: normalizeRequiredString(rawItem.drugClass),
+            chinaOption: normalizeRequiredString(rawItem.chinaOption),
+            referenceOption: normalizeRequiredString(rawItem.referenceOption),
+            chinaCost: normalizeRequiredString(rawItem.chinaCost),
+            referenceCost: normalizeRequiredString(rawItem.referenceCost),
+            efficacyEquivalence: normalizeRequiredString(rawItem.efficacyEquivalence),
+            savingInsight: normalizeRequiredString(rawItem.savingInsight),
+            eligibility: normalizeRequiredString(rawItem.eligibility),
+            note: normalizeOptionalString(rawItem.note)?.trim(),
+          }
+        })
+        : [],
+      note: normalizeRequiredString(drugCostComparison?.note),
+    },
+    newDrugCureAssessment: {
+      headline: normalizeRequiredString(newDrugCureAssessment?.headline),
+      answer: normalizeRequiredString(newDrugCureAssessment?.answer),
+      summary: normalizeRequiredString(newDrugCureAssessment?.summary),
+      items: Array.isArray(newDrugCureAssessment?.items)
+        ? newDrugCureAssessment.items.map((item) => {
+          const rawItem = item as AdvancedCare['newDrugCureAssessment']['items'][number]
+          return {
+            name: normalizeRequiredString(rawItem.name),
+            type: normalizeRequiredString(rawItem.type),
+            applicableFor: normalizeRequiredString(rawItem.applicableFor),
+            evidence: normalizeRequiredString(rawItem.evidence),
+            chinaAvailability: normalizeRequiredString(rawItem.chinaAvailability),
+            potentialRole: normalizeRequiredString(rawItem.potentialRole),
+            limitations: normalizeRequiredString(rawItem.limitations),
+            nextStep: normalizeRequiredString(rawItem.nextStep),
+          }
+        })
+        : [],
+      ctaItems: normalizeStringList(newDrugCureAssessment?.ctaItems),
+    },
+    disclaimer: normalizeRequiredString(rawCare.disclaimer),
+  }
+}
+
+const normalizeLlmHospitals = (hospitals?: GeneratedReport['hospitals']) => hospitals?.map((hospital) => {
+  const rawHospital = hospital as GeneratedReport['hospitals'][number] & {
+    tags?: unknown
+    detailItems?: unknown
+    matchScore?: unknown
+  }
+  const detailItems = Array.isArray(rawHospital.detailItems)
+    ? rawHospital.detailItems
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null
+        const rawItem = item as { label?: unknown; title?: unknown; name?: unknown; value?: unknown; description?: unknown; detail?: unknown }
+        const label = normalizeOptionalString(rawItem.label) || normalizeOptionalString(rawItem.title) || normalizeOptionalString(rawItem.name)
+        const value = normalizeOptionalString(rawItem.value) || normalizeOptionalString(rawItem.description) || normalizeOptionalString(rawItem.detail)
+        return label && value ? { label, value } : null
+      })
+      .filter((item): item is { label: string; value: string } => Boolean(item))
+    : undefined
+
+  return {
+    ...hospital,
+    englishName: normalizeOptionalString(hospital.englishName),
+    department: normalizeOptionalString(hospital.department),
+    rankLabel: normalizeOptionalString(hospital.rankLabel),
+    internationalPatients: normalizeOptionalString(hospital.internationalPatients),
+    waitTime: normalizeOptionalString(hospital.waitTime),
+    preparation: normalizeOptionalString(hospital.preparation),
+    matchScore: normalizeOptionalScore(rawHospital.matchScore),
+    tags: normalizeStringList(rawHospital.tags),
+    detailItems,
+  }
+})
+
+const hasUsefulFreeHospitalDetails = (context: ReportContext, hospitals?: GeneratedReport['hospitals']) => {
+  const requiredCount = context.diseaseKey === 'dental' ? 1 : 3
+  const hospitalItems = hospitals?.slice(0, requiredCount) || []
+  return hospitalItems.length >= requiredCount && hospitalItems.every((hospital) => (
+    typeof hospital.matchScore === 'number' &&
+    hospital.matchScore > 0 &&
+    Boolean(hospital.waitTime?.trim()) &&
+    Boolean(hospital.internationalPatients?.trim()) &&
+    Boolean(hospital.department?.trim()) &&
+    Boolean(hospital.preparation?.trim()) &&
+    Boolean(hospital.detailItems?.length && hospital.detailItems.length >= 3)
+  ))
 }
 
 const callLlmPatch = async (context: ReportContext, ruleReport: GeneratedReport): Promise<FreeReportPatch | null> => {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  try {
+    for (let attempt = 0; attempt < 1; attempt += 1) {
+      const content = await requestMedicalChatCompletion({
+        messages: buildPatchPrompt(context, ruleReport),
+        temperature: 0.2,
+        stream: false,
+        responseFormat: 'json_object',
+        maxTokens: 12000,
+        maxAttempts: 1,
+        disableFallbackVariants: true,
+      })
+
+      if (!content) return null
+
+      try {
+        const parsed = dropNullFields(parseLlmJson(content))
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('LLM patch response was not a JSON object')
+        }
+        const envelope = parsed as LlmPatchEnvelope
+        const packageItems = normalizeLlmPackageItems(getLlmPackageItems(envelope))
+        return {
+          ...envelope,
+          hospitals: normalizeLlmHospitals(envelope.hospitals),
+          plan: {
+            ...envelope.plan,
+            costBreakdown: getLlmCostBreakdown(envelope),
+          },
+          packages: packageItems,
+          advancedCare: normalizeAdvancedCare(getLlmAdvancedCare(envelope)),
+        }
+      } catch (error) {
+        throw error
+      }
+    }
+
+    return null
+  } catch (error) {
+    throw new Error(`LLM_STAGE_MAIN_PATCH: ${sanitizeGenerationError(error)}`)
+  }
+}
+
+const callLlmHospitalDetailsPatch = async (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+  patch: FreeReportPatch,
+): Promise<GeneratedReport['hospitals'] | null> => {
+  try {
     const content = await requestMedicalChatCompletion({
-      messages: buildPatchPrompt(context, ruleReport),
-      temperature: 0.2,
+      messages: buildHospitalDetailsPrompt(context, ruleReport, patch),
+      temperature: 0.15,
       stream: false,
-      maxAttempts: 2,
+      responseFormat: 'json_object',
+      maxTokens: 7000,
+      maxAttempts: 1,
+      disableFallbackVariants: true,
     })
 
     if (!content) return null
 
-    try {
-      const parsed = JSON.parse(extractJson(content)) as unknown
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('LLM patch response was not a JSON object')
+    const parsed = dropNullFields(parseLlmJson(content))
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('LLM hospital details recovery response was not a JSON object')
+    }
+
+    const hospitals = normalizeLlmHospitals((parsed as LlmPatchEnvelope).hospitals)
+    if (!hospitals?.length) throw new Error('LLM hospital details recovery response did not include hospitals')
+    if (!hasUsefulFreeHospitalDetails(context, hospitals)) throw new Error('recovered hospital details are incomplete')
+
+    return hospitals
+  } catch (error) {
+    throw new Error(`LLM_STAGE_HOSPITAL_DETAILS_RECOVERY: ${sanitizeGenerationError(error)}`)
+  }
+}
+
+const callLlmSupplementalPatch = async (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+): Promise<FreeReportPatch | null> => {
+  try {
+    const content = await requestMedicalChatCompletion({
+      messages: buildSupplementalPatchPrompt(context, ruleReport),
+      temperature: 0.1,
+      stream: false,
+      responseFormat: 'json_object',
+      maxTokens: 14000,
+      maxAttempts: 1,
+      disableFallbackVariants: true,
+    })
+
+    if (!content) return null
+
+    const parsed = dropNullFields(parseLlmJson(content))
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('LLM supplemental response was not a JSON object')
+    }
+
+    const envelope = parsed as LlmPatchEnvelope
+    let costBreakdown = normalizeLlmCostBreakdown(getLlmCostBreakdown(envelope))
+    let advancedCare = normalizeAdvancedCare(getLlmAdvancedCare(envelope))
+
+    if (costBreakdown) {
+      const costCandidate = generatedReportSchema.parse({
+        ...ruleReport,
+        plan: {
+          ...ruleReport.plan,
+          costBreakdown,
+        },
+        id: context.submissionNo,
+        date: context.dateLabel,
+        need: getNeedForReport(context),
+        generatedBy: 'llm',
+      })
+      if (!hasDetailedCostFormat(costCandidate)) {
+        console.warn('LLM supplemental costBreakdown was incomplete; will request cost-only recovery if needed')
+        costBreakdown = undefined
       }
-      return parsed as FreeReportPatch
+    }
+
+    if (advancedCare) {
+      const advancedCareCandidate = generatedReportSchema.parse({
+        ...ruleReport,
+        advancedCare,
+        id: context.submissionNo,
+        date: context.dateLabel,
+        need: getNeedForReport(context),
+        generatedBy: 'llm',
+      })
+      const advancedCareFailure = getAdvancedCareFailure(advancedCareCandidate)
+      if (advancedCareFailure) {
+        console.warn(`LLM supplemental advancedCare was incomplete; will request advanced-care recovery if needed: ${advancedCareFailure}`)
+        advancedCare = undefined
+      }
+    }
+
+    if (!costBreakdown && !advancedCare) {
+      throw new Error('LLM supplemental response did not include usable costBreakdown or advancedCare')
+    }
+
+    return {
+      plan: { costBreakdown },
+      advancedCare,
+    }
+  } catch (error) {
+    throw new Error(`LLM_STAGE_SUPPLEMENTAL_PATCH: ${sanitizeGenerationError(error)}`)
+  }
+}
+
+const callLlmCostBreakdownPatch = async (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+  patch: FreeReportPatch,
+): Promise<GeneratedReport['plan']['costBreakdown'] | null> => {
+  try {
+    const content = await requestMedicalChatCompletion({
+      messages: buildCostBreakdownPrompt(context, ruleReport, patch),
+      temperature: 0.1,
+      stream: false,
+      responseFormat: 'json_object',
+      maxTokens: 9000,
+      maxAttempts: 1,
+      disableFallbackVariants: true,
+    })
+
+    if (!content) return null
+
+    const parsed = dropNullFields(parseLlmJson(content))
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('LLM costBreakdown recovery response was not a JSON object')
+    }
+
+    const costBreakdown = normalizeLlmCostBreakdown(getLlmCostBreakdown(parsed as LlmPatchEnvelope))
+    if (!costBreakdown) throw new Error('LLM costBreakdown recovery response did not include costBreakdown')
+
+    const candidateReport = generatedReportSchema.parse({
+      ...ruleReport,
+      plan: {
+        ...ruleReport.plan,
+        costBreakdown,
+      },
+      id: context.submissionNo,
+      date: context.dateLabel,
+      need: getNeedForReport(context),
+      generatedBy: 'llm',
+    })
+    if (!hasDetailedCostFormat(candidateReport)) throw new Error('recovered costBreakdown format is incomplete')
+
+    return costBreakdown
+  } catch (error) {
+    throw new Error(`LLM_STAGE_COST_BREAKDOWN_RECOVERY: ${sanitizeGenerationError(error)}`)
+  }
+}
+
+const callLlmAdvancedCarePatch = async (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+  patch: FreeReportPatch,
+): Promise<GeneratedReport['advancedCare'] | null> => {
+  try {
+    const content = await requestMedicalChatCompletion({
+      messages: buildAdvancedCarePrompt(context, ruleReport, patch),
+      temperature: 0.1,
+      stream: false,
+      responseFormat: 'json_object',
+      maxTokens: 9000,
+      maxAttempts: 1,
+      disableFallbackVariants: true,
+    })
+
+    if (!content) return null
+
+    const parsed = dropNullFields(parseLlmJson(content))
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('LLM advancedCare recovery response was not a JSON object')
+    }
+
+    const advancedCare = normalizeAdvancedCare(getLlmAdvancedCare(parsed as LlmPatchEnvelope))
+    if (!advancedCare) throw new Error('LLM advancedCare recovery response did not include advancedCare')
+
+    const candidateReport = generatedReportSchema.parse({
+      ...ruleReport,
+      advancedCare,
+      id: context.submissionNo,
+      date: context.dateLabel,
+      need: getNeedForReport(context),
+      generatedBy: 'llm',
+    })
+    const advancedCareFailure = getAdvancedCareFailure(candidateReport)
+    if (advancedCareFailure) throw new Error(advancedCareFailure)
+
+    return advancedCare
+  } catch (error) {
+    throw new Error(`LLM_STAGE_ADVANCED_CARE_RECOVERY: ${sanitizeGenerationError(error)}`)
+  }
+}
+
+const callReportStageWithRetry = async <T>(
+  label: string,
+  task: () => Promise<T | null>,
+): Promise<T> => {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const result = await task()
+      if (result) return result
+      throw new Error(`${label} returned empty`)
     } catch (error) {
-      if (attempt === 0) continue
-      throw error
+      lastError = error
+      if (attempt < 2) {
+        console.warn(`${label} failed, retrying once: ${sanitizeGenerationError(error).slice(0, 1000)}`)
+      }
     }
   }
 
-  return null
+  throw lastError instanceof Error ? lastError : new Error(String(lastError || `${label} failed`))
 }
 
-const nonEmptyArray = <T>(value: T[] | undefined) => (Array.isArray(value) && value.length ? value : undefined)
+const normalizePackageText = (value?: string) => (value || '').replace(/\s+/g, ' ').trim()
+
+const packageContentSignature = (packageItems: GeneratedReport['packages']) => JSON.stringify(packageItems.map((pkg) => ({
+  name: normalizePackageText(pkg.name),
+  subtitle: normalizePackageText(pkg.subtitle),
+  features: pkg.features.map(normalizePackageText),
+  featureDetails: (pkg.featureDetails || []).map((feature) => ({
+    label: normalizePackageText(feature.label),
+    status: feature.status || 'included',
+  })),
+  footnote: normalizePackageText(pkg.footnote),
+})))
+
+const freeInsufficientMessage = (section: string, context: ReportContext) => {
+  const material = context.personalization.requiredMaterials.slice(0, 3).join('、') || '关键医学资料'
+  return `${section}需要结合${material}由医疗模型进一步确认；当前资料不足以生成可靠内容，建议补充资料后重新评估。`
+}
+
+const unavailableFreeCostBreakdown = (context: ReportContext): NonNullable<GeneratedReport['plan']['costBreakdown']> => ({
+  currencyNote: '当前资料不足以生成可靠费用估算；为避免误导，暂不展示通用费用模板。',
+  coreMedical: {
+    title: '核心医疗费用',
+    subtotal: '暂不估算',
+    items: [
+      { item: '诊断复核与检查', cost: '暂不估算', note: '需医生确认检查项目后再估算。' },
+      { item: '治疗或用药费用', cost: '暂不估算', note: '需明确治疗方案后再估算。' },
+      { item: '住院或日间治疗', cost: '暂不估算', note: '需确认治疗强度和周期后再估算。' },
+    ],
+    tip: freeInsufficientMessage('核心医疗费用', context),
+  },
+  supportServices: {
+    title: '配套服务费用',
+    subtotal: '暂不估算',
+    items: [
+      { item: '病历整理与翻译', cost: '暂不估算', note: '需确认资料量和语言后再估算。' },
+      { item: '专家预审和医院对接', cost: '暂不估算', note: '需确认医院方向后再估算。' },
+      { item: '陪诊和远程随访', cost: '暂不估算', note: '需确认服务深度后再估算。' },
+    ],
+    tip: '服务费用需在资料预审后确认。',
+  },
+  living: {
+    title: '生活费用',
+    subtotal: '暂不估算',
+    items: [
+      { item: '住宿', cost: '暂不估算', note: '需确认城市和停留天数。' },
+      { item: '交通与餐饮', cost: '暂不估算', note: '需确认出行计划和陪同人数。' },
+      { item: '签证、保险和备用金', cost: '暂不估算', note: '需确认行程后再估算。' },
+    ],
+    tip: '生活费用暂不使用通用模板估算。',
+  },
+  summary: {
+    formula: '核心医疗暂不估算 + 配套服务暂不估算 + 生活费用暂不估算 = 暂不估算',
+    chinaTotal: '暂不估算',
+    referenceCountry: context.input.basicInfo.nationality || '本国或常住地',
+    referenceCost: '暂不估算',
+    savingsPercent: 0,
+    savingsText: '资料不足，暂不计算节省比例/Save 暂不计算',
+  },
+})
+
+const unavailableFreeAdvancedCare = (context: ReportContext): NonNullable<GeneratedReport['advancedCare']> => ({
+  context: freeInsufficientMessage('前沿疗法推荐', context),
+  currencyNote: '资料不足时不展示药品费用对比或新药治愈判断。',
+  therapies: [{
+    name: '暂不推荐具体前沿疗法',
+    category: '资料不足',
+    recommendationLevel: '资料不足',
+    summary: '当前资料不足以判断是否适合前沿疗法、临床研究或特定药物。',
+    applicableFor: '需补充诊断、分期、病理、分子检测和既往治疗记录。',
+    mechanism: '需医生复核后确认。',
+    chinaAccess: '暂不判断。',
+    estimatedCost: '暂不估算',
+    referenceCost: '暂不估算',
+    advantage: '暂不判断优势。',
+    evidence: '当前证据不足。',
+    limitations: '资料不足时不应据此选择治疗。',
+    nextStep: '补齐资料后重新生成前沿疗法建议。',
+    tags: ['资料不足'],
+  }],
+  drugCostComparison: {
+    title: '药品费用对比暂不生成',
+    basis: '资料不足，需医生确认同等疗效、适应证和证据前提。',
+    summary: '当前不展示药品费用对比，避免误导用药选择。',
+    items: [{
+      drugName: '暂不指定药品',
+      drugClass: '资料不足',
+      chinaOption: '暂不判断',
+      referenceOption: '暂不判断',
+      chinaCost: '暂不估算',
+      referenceCost: '暂不估算',
+      efficacyEquivalence: '资料不足，需医生确认是否存在同等疗效前提。',
+      savingInsight: '暂不计算节省。',
+      eligibility: '需补充关键检测和治疗史。',
+    }],
+    note: '药物选择必须由执业医生结合完整资料确认。',
+  },
+  newDrugCureAssessment: {
+    headline: '是否有新药可治愈：暂不判断',
+    answer: '当前资料不足，不能判断是否存在可治愈的新药方案。',
+    summary: '补充分期、病理、基因检测和既往治疗后，再评估新药或临床研究价值。',
+    items: [{
+      name: '暂不指定新药',
+      type: '资料不足',
+      applicableFor: '需医生复核后确认。',
+      evidence: '当前证据不足。',
+      chinaAvailability: '暂不判断。',
+      potentialRole: '暂不判断治疗作用。',
+      limitations: '不能承诺治愈或疗效。',
+      nextStep: '补齐资料后重新评估。',
+    }],
+    ctaItems: ['补充关键医学资料', '完成医生预审', '重新生成前沿疗法建议'],
+  },
+  disclaimer: '本节未使用通用模板替代医疗模型判断，最终方案需以医生意见为准。',
+})
+
+const unavailableFreeSection = <K extends keyof GeneratedReport>(
+  key: K,
+  context: ReportContext,
+): GeneratedReport[K] => {
+  const message = freeInsufficientMessage('本节内容', context)
+  const sections: Partial<Record<keyof GeneratedReport, unknown>> = {
+    disease: '待医生确认的就医方向',
+    treatment: freeInsufficientMessage('治疗路径', context),
+    countries: [
+      { flag: '🇨🇳', name: '中国', fee: '暂不估算', wait: '需预审确认', tech: '补齐资料后再评估医院和治疗路径。', service: '可先进行资料整理和医生预审。', visa: '暂不建议直接安排行程。', follow: '补齐资料后再确认随访方式。', recommended: false },
+      { flag: '🌐', name: '本国或其他地区', fee: '暂不估算', wait: '需自行确认', tech: '建议先完成当地补充检查。', service: '暂不比较服务差异。', visa: '不适用', follow: '可先保留当地医生随访。' },
+    ],
+    advantages: [
+      { label: '资料完整度待提升', value: message },
+      { label: '医院匹配暂不生成', value: '补齐关键资料后再生成医院和专家方向。' },
+      { label: '费用节省暂不计算', value: '缺少可靠治疗路径时，不展示节省比例。' },
+    ],
+    concerns: [
+      { concern: '资料不足', solution: message },
+      { concern: '治疗路径未确认', solution: '需医生复核后再确认检查、治疗和用药。' },
+      { concern: '费用暂不可靠', solution: '不使用通用费用模板替代医疗模型估算。' },
+      { concern: '出行安排暂缓', solution: '建议先完成资料预审，再规划赴华行程。' },
+    ],
+    hospitals: [{
+      city: '待确认',
+      name: '暂不推荐具体医院',
+      reason: freeInsufficientMessage('医院推荐', context),
+      department: '需补充资料后匹配',
+      matchScore: 0,
+      waitTime: '需预审确认',
+      preparation: '补齐资料后再生成匹配度、等待时间和准备清单。',
+    }],
+    highlights: [
+      '当前资料不足，暂不展示具体医院推荐。',
+      '当前不使用通用费用模板替代医疗模型估算。',
+      '建议先补充关键医学资料并完成医生预审。',
+      '如出现急性变化，请优先在当地就医。',
+    ],
+    packages: [
+      { name: '基础评估包 / Basic', subtitle: '资料补充后再细化', price: '暂不报价', originalPrice: '暂不报价', icon: 'FileText', highlight: false, features: ['资料清单整理', '基础预审准备', '暂不含治疗结论'], featureDetails: [{ label: '资料清单整理', status: 'included' }, { label: '基础预审准备', status: 'included' }, { label: '具体医院和费用需补充资料后生成', status: 'excluded' }], footnote: '当前资料不足，暂不生成个性化服务包报价。' },
+      { name: '标准面诊包 / Standard', subtitle: '医生预审后确认', price: '暂不报价', originalPrice: '暂不报价', icon: 'Video', highlight: true, features: ['医生预审后确认', '面诊条件待评估', '费用暂不估算'], featureDetails: [{ label: '医生预审后确认', status: 'emphasis' }, { label: '面诊条件待评估', status: 'included' }, { label: '暂不承诺预约或费用', status: 'excluded' }], footnote: '补齐资料后再确认是否适合视频面诊。' },
+      { name: '深度面诊包 / Premium', subtitle: '暂不生成深度方案', price: '暂不报价', originalPrice: '暂不报价', icon: 'MessageSquare', highlight: false, features: ['MDT条件待评估', '专家匹配待确认', 'VIP号源暂不承诺'], featureDetails: [{ label: 'MDT条件待评估', status: 'included' }, { label: '专家匹配待确认', status: 'included' }, { label: '暂不承诺VIP号源', status: 'excluded' }], footnote: '深度方案需在资料齐备后生成。' },
+    ],
+    advancedCare: unavailableFreeAdvancedCare(context),
+    paymentAndInsurance: [
+      '当前资料不足以生成可靠预算或保险建议，建议先完成资料预审。',
+      '补齐资料后再确认费用项目、预授权、直付或理赔材料。',
+    ],
+    plan: {
+      direction: freeInsufficientMessage('治疗路径', context),
+      duration: '暂不建议直接安排行程',
+      totalCost: '暂不估算',
+      breakdown: [
+        { item: '资料补充', cost: '暂不估算' },
+        { item: '医生预审', cost: '暂不估算' },
+        { item: '检查或治疗路径确认', cost: '暂不估算' },
+        { item: '出行和服务安排', cost: '暂不估算' },
+      ],
+      costBreakdown: unavailableFreeCostBreakdown(context),
+    },
+  }
+
+  return sections[key] as GeneratedReport[K]
+}
+
+const isUnavailableFreeSection = (value: unknown) => /暂不|资料不足|需补充资料/.test(JSON.stringify(value))
+
+const buildUnavailableFreeReport = (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+): GeneratedReport => {
+  const plan = unavailableFreeSection('plan', context)
+  return generatedReportSchema.parse({
+    ...ruleReport,
+    disease: unavailableFreeSection('disease', context),
+    treatment: unavailableFreeSection('treatment', context),
+    countries: unavailableFreeSection('countries', context),
+    advantages: unavailableFreeSection('advantages', context),
+    concerns: unavailableFreeSection('concerns', context),
+    hospitals: unavailableFreeSection('hospitals', context),
+    plan,
+    packages: unavailableFreeSection('packages', context),
+    advancedCare: unavailableFreeSection('advancedCare', context),
+    highlights: unavailableFreeSection('highlights', context),
+    paymentAndInsurance: unavailableFreeSection('paymentAndInsurance', context),
+    score: 0,
+    id: context.submissionNo,
+    date: context.dateLabel,
+    need: getNeedForReport(context),
+    generatedBy: 'rules',
+  })
+}
 
 const mergeLlmPatch = (
   patch: FreeReportPatch,
   context: ReportContext,
   ruleReport: GeneratedReport,
 ) => {
+  const patchPackages = nonEmptyArray(patch.packages)
+  const servicePackages = patchPackages && packageContentSignature(patchPackages) !== packageContentSignature(ruleReport.packages)
+    ? patchPackages
+    : unavailableFreeSection('packages', context)
+  const planPatch = patch.plan || {}
+  const unavailablePlan = unavailableFreeSection('plan', context)
+
   const patchedReport = generatedReportSchema.parse({
     ...ruleReport,
     disease: typeof patch.disease === 'string' && patch.disease.trim()
       ? patch.disease.trim().slice(0, 24)
-      : ruleReport.disease,
+      : unavailableFreeSection('disease', context),
     treatment: typeof patch.treatment === 'string' && patch.treatment.trim()
       ? patch.treatment.trim()
-      : ruleReport.treatment,
-    countries: nonEmptyArray(patch.countries) || ruleReport.countries,
-    advantages: nonEmptyArray(patch.advantages) || ruleReport.advantages,
-    concerns: nonEmptyArray(patch.concerns) || ruleReport.concerns,
-    hospitals: nonEmptyArray(patch.hospitals) || ruleReport.hospitals,
-    highlights: nonEmptyArray(patch.highlights) || ruleReport.highlights,
-    paymentAndInsurance: nonEmptyArray(patch.paymentAndInsurance) || ruleReport.paymentAndInsurance,
+      : unavailableFreeSection('treatment', context),
+    countries: nonEmptyArray(patch.countries) || unavailableFreeSection('countries', context),
+    advantages: nonEmptyArray(patch.advantages) || unavailableFreeSection('advantages', context),
+    concerns: nonEmptyArray(patch.concerns) || unavailableFreeSection('concerns', context),
+    hospitals: nonEmptyArray(patch.hospitals) || unavailableFreeSection('hospitals', context),
+    highlights: nonEmptyArray(patch.highlights) || unavailableFreeSection('highlights', context),
+    packages: servicePackages,
+    advancedCare: patch.advancedCare || unavailableFreeSection('advancedCare', context),
+    paymentAndInsurance: nonEmptyArray(patch.paymentAndInsurance) || unavailableFreeSection('paymentAndInsurance', context),
     plan: {
-      ...ruleReport.plan,
-      direction: typeof patch.plan?.direction === 'string' && patch.plan.direction.trim()
-        ? patch.plan.direction.trim()
-        : ruleReport.plan.direction,
-      duration: typeof patch.plan?.duration === 'string' && patch.plan.duration.trim()
-        ? patch.plan.duration.trim()
-        : ruleReport.plan.duration,
-      totalCost: typeof patch.plan?.totalCost === 'string' && patch.plan.totalCost.trim()
-        ? patch.plan.totalCost.trim()
-        : ruleReport.plan.totalCost,
-      breakdown: nonEmptyArray(patch.plan?.breakdown) || ruleReport.plan.breakdown,
+      ...unavailablePlan,
+      direction: typeof planPatch.direction === 'string' && planPatch.direction.trim()
+        ? planPatch.direction.trim()
+        : unavailablePlan.direction,
+      duration: typeof planPatch.duration === 'string' && planPatch.duration.trim()
+        ? planPatch.duration.trim()
+        : unavailablePlan.duration,
+      totalCost: typeof planPatch.totalCost === 'string' && planPatch.totalCost.trim()
+        ? planPatch.totalCost.trim()
+        : unavailablePlan.totalCost,
+      breakdown: nonEmptyArray(planPatch.breakdown) || unavailablePlan.breakdown,
+      costBreakdown: planPatch.costBreakdown || unavailablePlan.costBreakdown,
     },
     id: context.submissionNo,
     date: context.dateLabel,
@@ -1889,16 +3511,155 @@ const reportContainsAny = (report: GeneratedReport, terms: string[]) => {
   return terms.some((term) => text.includes(term))
 }
 
+const hasRmbUsdCostFormat = (value?: string) => (
+  Boolean(value && (/[￥¥]\s*[\d,]+/.test(value) || hasParsedMoney(value)) && (/\$\s*[\d,]+/.test(value) || hasParsedMoney(value)))
+)
+
+const hasDetailedCostFormat = (report: GeneratedReport) => {
+  const breakdown = report.plan.costBreakdown
+  if (!breakdown) return false
+
+  const categories = [breakdown.coreMedical, breakdown.supportServices, breakdown.living]
+  const allSubtotalsFormatted = categories.every((category) => Boolean(category.subtotal.trim()))
+  const allItemsFormatted = categories.every((category) => (
+    category.items.length >= 3 && category.items.every((item) => Boolean(item.item.trim()) && Boolean(item.cost.trim()))
+  ))
+  const summaryFormatted = [
+    Boolean(breakdown.summary.formula.trim()),
+    Boolean(breakdown.summary.chinaTotal.trim()),
+    Boolean(breakdown.summary.referenceCost.trim()),
+    Boolean(breakdown.summary.savingsText.trim()),
+  ].every(Boolean)
+
+  return allSubtotalsFormatted && allItemsFormatted && summaryFormatted
+}
+
+const hasAdvancedCareCostFormat = (value?: string) => (
+  Boolean(value && (/暂无|待|未|不适用|N\/A/i.test(value) || hasRmbUsdCostFormat(value) || /\$\s*[\d,]+/.test(value)))
+)
+
+const getAdvancedCareFailure = (report: GeneratedReport) => {
+  const advancedCare = report.advancedCare
+  if (!advancedCare) return 'advanced care insights are missing'
+
+  const therapiesDetailed = advancedCare.therapies.length >= 1 && advancedCare.therapies.every((therapy) => (
+    Boolean(therapy.name.trim()) &&
+    Boolean(therapy.summary.trim()) &&
+    Boolean(therapy.limitations.trim()) &&
+    Boolean(therapy.nextStep.trim())
+  ))
+  if (!therapiesDetailed) return 'advanced therapy recommendations are incomplete'
+
+  const drugComparison = advancedCare.drugCostComparison
+  const drugComparisonDetailed = Boolean(
+    drugComparison.title.trim() &&
+    drugComparison.basis.trim() &&
+    drugComparison.summary.trim() &&
+    drugComparison.items.length >= 1 &&
+    drugComparison.items.every((item) => (
+      Boolean(item.drugName.trim()) &&
+      Boolean(item.efficacyEquivalence.trim())
+    )),
+  )
+  if (!drugComparisonDetailed) return 'drug cost comparison is incomplete'
+
+  const equivalenceText = `${drugComparison.basis} ${drugComparison.items.map((item) => item.efficacyEquivalence).join(' ')}`
+  const mentionsEquivalenceBasis = includesAny(equivalenceText, [
+    '同等',
+    '相当',
+    '等效',
+    '一致性',
+    '生物类似',
+    '同类',
+    '指南',
+    '适应证',
+    '证据',
+    '需医生确认',
+    '资料不足',
+    '不适用',
+  ])
+  if (!mentionsEquivalenceBasis) return 'drug cost comparison does not state efficacy equivalence basis'
+
+  const cureAssessment = advancedCare.newDrugCureAssessment
+  const cureAssessmentDetailed = Boolean(
+    cureAssessment.headline.trim() &&
+    cureAssessment.answer.trim() &&
+    cureAssessment.summary.trim() &&
+    cureAssessment.items.length >= 1 &&
+    cureAssessment.items.every((item) => (
+      Boolean(item.name.trim()) &&
+      Boolean(item.potentialRole.trim()) &&
+      Boolean(item.limitations.trim())
+    )),
+  )
+  if (!cureAssessmentDetailed) return 'new drug cure assessment is incomplete'
+
+  const cureText = `${cureAssessment.answer} ${cureAssessment.summary} ${cureAssessment.items.map((item) => `${item.potentialRole} ${item.limitations}`).join(' ')}`
+  const overpromisesCure = /(?:保证|一定|可承诺|百分百|100%)?治愈|根治|痊愈/.test(cureText) &&
+    !/(?:不能|无法|不可|不应|不能承诺|暂无|尚无|不保证|无法保证|不等于|不是|通常不能|不适用)[^。；.!?]{0,24}(?:治愈|根治|痊愈)/.test(cureText)
+  if (overpromisesCure) return 'new drug cure assessment overpromises cure'
+
+  const referencesPatientContext = includesAny(JSON.stringify(advancedCare), [
+    report.disease,
+    '主诉',
+    '病例',
+    '病情',
+    '资料',
+    '影像',
+    '病理',
+    '检测',
+    '分期',
+    '治疗',
+    '用药',
+    '不适用',
+    '资料不足',
+  ])
+  if (!referencesPatientContext) return 'advanced care insights do not reference patient context'
+
+  if (!advancedCare.context.trim() || !advancedCare.disclaimer.trim()) {
+    return 'advanced care context or disclaimer is incomplete'
+  }
+
+  return null
+}
+
+const getDetailedLlmPackagesFailure = (report: GeneratedReport) => {
+  if (report.packages.length < 3) return 'professional service packages must include three tiers'
+
+  const basicPackage = report.packages.find((pkg) => /Basic|基础/.test(pkg.name))
+  const standardPackage = report.packages.find((pkg) => /Standard|标准/.test(pkg.name))
+  const premiumPackage = report.packages.find((pkg) => /Premium|深度|MDT|多学科/.test(pkg.name))
+  const everyPackageDetailed = report.packages.every((pkg) => (
+    Boolean(pkg.name.trim()) &&
+    Boolean(pkg.price.trim()) &&
+    (pkg.features.length >= 3 || Boolean(pkg.featureDetails?.length && pkg.featureDetails.length >= 3))
+  ))
+  if (!basicPackage || !standardPackage || !premiumPackage) return 'professional service package tiers are missing Basic, Standard or Premium'
+  if (!everyPackageDetailed) return 'professional service package features are too coarse'
+
+  return null
+}
+
 const ensureFreeReportCompleteness = (report: GeneratedReport, context: ReportContext) => {
   const reportText = JSON.stringify(report)
+  const packageFailure = getDetailedLlmPackagesFailure(report)
+  const advancedCareFailure = getAdvancedCareFailure(report)
   const requiredChecks: Array<[boolean, string]> = [
     [report.generatedBy === 'llm', 'report was not generated by medical LLM'],
     [report.countries.length >= 2, 'country comparison is incomplete'],
     [report.countries.some((country) => country.recommended || country.name.includes('中国')), 'China recommendation is missing'],
-    [context.diseaseKey === 'dental' ? report.hospitals.length >= 1 : report.hospitals.length >= 3, 'hospital recommendations are incomplete'],
+    [context.diseaseKey === 'dental' || isUnavailableFreeSection(report.hospitals) ? report.hospitals.length >= 1 : report.hospitals.length >= 3, 'hospital recommendations are incomplete'],
     [report.advantages.length >= 3, 'advantage analysis is incomplete'],
     [report.concerns.length >= 4, 'risk and concern analysis is incomplete'],
     [report.plan.breakdown.length >= 4, 'cost breakdown is incomplete'],
+    [Boolean(report.plan.costBreakdown), 'detailed cost breakdown is missing'],
+    [Boolean(report.plan.costBreakdown?.coreMedical.items.length && report.plan.costBreakdown.coreMedical.items.length >= 3), 'core medical cost details are incomplete'],
+    [Boolean(report.plan.costBreakdown?.supportServices.items.length && report.plan.costBreakdown.supportServices.items.length >= 3), 'support service cost details are incomplete'],
+    [Boolean(report.plan.costBreakdown?.living.items.length && report.plan.costBreakdown.living.items.length >= 3), 'living cost details are incomplete'],
+    [Boolean(report.plan.costBreakdown?.summary.formula && report.plan.costBreakdown.summary.chinaTotal && report.plan.costBreakdown.summary.referenceCost && report.plan.costBreakdown.summary.savingsText), 'cost savings summary is incomplete'],
+    [hasDetailedCostFormat(report), 'detailed cost breakdown format is incomplete'],
+    [!packageFailure, packageFailure || 'professional service package details are incomplete'],
+    [!advancedCareFailure, advancedCareFailure || 'advanced care insights are incomplete'],
     [report.highlights.length >= 4, 'key highlights are incomplete'],
     [Boolean(report.paymentAndInsurance?.length && report.paymentAndInsurance.length >= 2), 'payment and insurance preparation is missing'],
   ]
@@ -2010,7 +3771,8 @@ const enforceReportGuardrails = (report: GeneratedReport, context: ReportContext
     const leaksRequestedSpecialty = requestedTerms.some((term) => report.disease.includes(term) || report.plan.direction.includes(term))
 
     if (!acknowledgesMismatch || leaksRequestedSpecialty) {
-      return rejectOrFallback('free report did not acknowledge department mismatch', ruleReport)
+      console.warn('Free report medical LLM did not acknowledge department mismatch; returning insufficient-data report')
+      return buildUnavailableFreeReport(context, ruleReport)
     }
   }
 
@@ -2019,15 +3781,18 @@ const enforceReportGuardrails = (report: GeneratedReport, context: ReportContext
   }
 
   if (diseaseKey === 'dental' && reportContainsAny(report, ['肿瘤MDT', '放疗', '化疗', '靶向', '免疫治疗']) && !report.need.includes('肿瘤')) {
-    return rejectOrFallback('dental report leaked oncology treatment template', ruleReport)
+    console.warn('Free report medical LLM leaked oncology template into dental case; returning insufficient-data report')
+    return buildUnavailableFreeReport(context, ruleReport)
   }
 
   if (diseaseKey === 'premium_checkup' && reportContainsAny(report, ['手术及住院', '放疗', '化疗']) && !report.need.includes('已确诊')) {
-    return rejectOrFallback('checkup report leaked treatment template', ruleReport)
+    console.warn('Free report medical LLM leaked treatment template into checkup case; returning insufficient-data report')
+    return buildUnavailableFreeReport(context, ruleReport)
   }
 
   if (!isLlmReportAlignedWithStructuredFacts(report, context)) {
-    return rejectOrFallback('free report was not aligned with submitted facts', ruleReport)
+    console.warn('Free report medical LLM was not aligned with submitted facts; returning insufficient-data report')
+    return buildUnavailableFreeReport(context, ruleReport)
   }
 
   const finalizedReport = finalizeReportCosts({
@@ -2042,16 +3807,91 @@ const enforceReportGuardrails = (report: GeneratedReport, context: ReportContext
   return finalizedReport
 }
 
-const generateLlmFreeReport = async (context: ReportContext, ruleReport: GeneratedReport) => {
-  const llmPatch = await callLlmPatch(context, ruleReport)
-  if (!llmPatch) {
-    return rejectOrFallback('medical LLM returned empty free report', ruleReport)
+const generateLlmFreeReport = async (
+  context: ReportContext,
+  ruleReport: GeneratedReport,
+  options?: FreeGenerationOptions,
+) => {
+  const [mainPatchResult, supplementalPatchResult] = await Promise.allSettled([
+    trackGenerationPhase('mainPatch', options, () => (
+      callReportStageWithRetry('LLM_STAGE_MAIN_PATCH', () => callLlmPatch(context, ruleReport))
+    )),
+    trackGenerationPhase('supplementalPatch', options, () => (
+      callReportStageWithRetry('LLM_STAGE_SUPPLEMENTAL_PATCH', () => callLlmSupplementalPatch(context, ruleReport))
+    )),
+  ])
+
+  const llmPatch = mainPatchResult.status === 'fulfilled' ? mainPatchResult.value : null
+  const supplementalPatch = supplementalPatchResult.status === 'fulfilled' ? supplementalPatchResult.value : null
+  if (mainPatchResult.status === 'rejected') {
+    console.warn(`Free report main medical LLM patch unavailable: ${sanitizeGenerationError(mainPatchResult.reason).slice(0, 500)}`)
+  }
+  if (supplementalPatchResult.status === 'rejected') {
+    console.warn(`Free report supplemental medical LLM patch unavailable: ${sanitizeGenerationError(supplementalPatchResult.reason).slice(0, 500)}`)
+  }
+  if (!llmPatch && !supplementalPatch) {
+    return buildUnavailableFreeReport(context, ruleReport)
   }
 
-  return mergeLlmPatch(llmPatch, context, ruleReport)
+  let costBreakdown = supplementalPatch?.plan?.costBreakdown ||
+    normalizeLlmCostBreakdown(llmPatch?.plan?.costBreakdown)
+  if (!costBreakdown) {
+    try {
+      costBreakdown = await trackGenerationPhase('costBreakdownRecovery', options, () => (
+        callReportStageWithRetry('LLM_STAGE_COST_BREAKDOWN_RECOVERY', () => (
+          callLlmCostBreakdownPatch(context, ruleReport, llmPatch || {})
+        ))
+      ))
+    } catch (error) {
+      console.warn(`Free report cost breakdown unavailable after medical LLM recovery: ${sanitizeGenerationError(error).slice(0, 500)}`)
+      costBreakdown = unavailableFreeCostBreakdown(context)
+    }
+  }
+
+  let advancedCare = supplementalPatch?.advancedCare || llmPatch?.advancedCare
+  if (!advancedCare) {
+    try {
+      advancedCare = await trackGenerationPhase('advancedCareRecovery', options, () => (
+        callReportStageWithRetry('LLM_STAGE_ADVANCED_CARE_RECOVERY', () => (
+          callLlmAdvancedCarePatch(context, ruleReport, llmPatch || {})
+        ))
+      ))
+    } catch (error) {
+      console.warn(`Free report advanced care unavailable after medical LLM recovery: ${sanitizeGenerationError(error).slice(0, 500)}`)
+      advancedCare = unavailableFreeAdvancedCare(context)
+    }
+  }
+
+  let hospitals = llmPatch?.hospitals
+  if (!hasUsefulFreeHospitalDetails(context, hospitals)) {
+    try {
+      hospitals = await trackGenerationPhase('hospitalDetailsRecovery', options, () => (
+        callReportStageWithRetry('LLM_STAGE_HOSPITAL_DETAILS_RECOVERY', () => (
+          callLlmHospitalDetailsPatch(context, ruleReport, llmPatch || {})
+        ))
+      )) || hospitals
+    } catch (error) {
+      console.warn(`Free report hospital details unavailable after medical LLM recovery: ${sanitizeGenerationError(error).slice(0, 500)}`)
+    }
+  }
+
+  const mergedPatch: FreeReportPatch = {
+    ...(llmPatch || {}),
+  }
+  if (hospitals) mergedPatch.hospitals = hospitals
+  mergedPatch.plan = {
+    ...mergedPatch.plan,
+    costBreakdown,
+  }
+  mergedPatch.advancedCare = advancedCare
+  return mergeLlmPatch(mergedPatch, context, ruleReport)
 }
 
-export const generateReport = async (input: ReportSubmissionInput, submissionNo: string): Promise<GeneratedReport> => {
+export const generateReport = async (
+  input: ReportSubmissionInput,
+  submissionNo: string,
+  options?: FreeGenerationOptions,
+): Promise<GeneratedReport> => {
   const match = getDiseaseMatch(input)
   const medicalFacts = collectMedicalFactBundle(input.parsedFiles)
   const context: ReportContext = {
@@ -2066,28 +3906,23 @@ export const generateReport = async (input: ReportSubmissionInput, submissionNo:
     medicalFacts,
   }
   const ruleReport = buildRuleReport(context)
-  const generationAttempts = shouldRequireLlmReport() ? 2 : 1
+  const generationAttempts = 1
   let lastError: unknown
 
   for (let attempt = 1; attempt <= generationAttempts; attempt += 1) {
     try {
-      const llmReport = await generateLlmFreeReport(context, ruleReport)
+      const llmReport = await generateLlmFreeReport(context, ruleReport, options)
       return sanitizeReportText(withFreeLayoutSections(llmReport, context))
     } catch (error) {
       lastError = error
       const message = sanitizeGenerationError(error)
       if (attempt < generationAttempts) {
-        console.warn(`Report LLM generation attempt ${attempt}/${generationAttempts} failed, retrying: ${message.slice(0, 240)}`)
+        console.warn(`Report LLM generation attempt ${attempt}/${generationAttempts} failed, retrying: ${message.slice(0, 1000)}`)
       }
     }
   }
 
   const message = sanitizeGenerationError(lastError)
-  if (shouldRequireLlmReport()) {
-    console.warn(`Report LLM generation failed after ${generationAttempts} attempts: ${message.slice(0, 240)}`)
-    throw new Error('FREE_REPORT_LLM_GENERATION_FAILED')
-  }
-
-  console.warn(`Report LLM generation failed, using rule fallback because MEDICAL_LLM_STRICT_REPORTS=false: ${message.slice(0, 240)}`)
-  return sanitizeReportText(withFreeLayoutSections(ruleReport, context))
+  console.warn(`Report LLM generation did not produce a reliable report; returning insufficient-data report: ${message.slice(0, 1000)}`)
+  return sanitizeReportText(withFreeLayoutSections(buildUnavailableFreeReport(context, ruleReport), context))
 }

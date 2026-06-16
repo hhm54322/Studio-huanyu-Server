@@ -9,6 +9,8 @@ import { registerReportSubmissionRoutes } from './routes/reportSubmissions.js'
 
 const app = Fastify({
   logger: true,
+  connectionTimeout: config.httpRequestTimeoutMs,
+  requestTimeout: config.httpRequestTimeoutMs,
 })
 
 await app.register(helmet)
@@ -27,7 +29,11 @@ app.get('/health', async () => ({ ok: true }))
 await registerReportSubmissionRoutes(app)
 await registerProfessionalReportSubmissionRoutes(app)
 
+let shuttingDown = false
+
 const shutdown = async () => {
+  if (shuttingDown) return
+  shuttingDown = true
   app.log.info('Shutting down server...')
   await app.close()
   await closePool()

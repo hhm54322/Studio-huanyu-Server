@@ -112,7 +112,12 @@ export const getDocumentKnowledgeStats = () => ({
 export const getKnowledgeForFreeReport = (input: ReportSubmissionInput, diseaseKey: string) => searchDocumentKnowledge({
   diseaseKey,
   visitPurpose: input.basicInfo.visitPurpose,
-  chiefComplaint: input.basicInfo.chiefComplaint,
+  chiefComplaint: [
+    input.basicInfo.chiefComplaint,
+    input.basicInfo.careNeed,
+    input.basicInfo.careNeedOther,
+    input.basicInfo.expectedTreatmentTime,
+  ].join(' '),
   selectedRegions: input.selectedRegions,
 }, 7)
 
@@ -125,6 +130,9 @@ export const getKnowledgeForProfessionalReport = (
   diagnosis: input.medical.diagnosis,
   chiefComplaint: [
     input.medical.chiefComplaint,
+    input.medical.careNeed,
+    input.medical.careNeedOther,
+    input.medical.expectedTreatmentTime,
     input.medical.pathologySummary,
     input.medical.imagingSummary,
     input.medical.geneticSummary,

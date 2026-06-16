@@ -11,7 +11,9 @@ type RequestOptions = {
   timeoutMs?: number
   stream?: boolean
   responseFormat?: 'json_object' | ''
+  maxTokens?: number
   maxAttempts?: number
+  disableFallbackVariants?: boolean
 }
 
 type ProviderSettings = {
@@ -126,6 +128,9 @@ const buildBody = (
   if (variant.responseFormat) {
     body.response_format = { type: variant.responseFormat }
   }
+  if (options.maxTokens) {
+    body.max_tokens = options.maxTokens
+  }
 
   return JSON.stringify(body)
 }
@@ -133,6 +138,8 @@ const buildBody = (
 const getRequestVariants = (settings: ProviderSettings, options: RequestOptions) => {
   const responseFormat = options.responseFormat ?? settings.responseFormat
   const stream = options.stream ?? settings.stream
+  if (options.disableFallbackVariants) return [{ responseFormat, stream }]
+
   const variants = [
     { responseFormat, stream },
     { responseFormat: '' as const, stream },
@@ -173,7 +180,13 @@ export const requestMedicalChatCompletion = async (options: RequestOptions) => {
         break
       }
 
-      return readChatCompletionContent(response)
+      try {
+        return await readChatCompletionContent(response)
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error)
+        if (attempt < maxAttempts - 1) continue
+        break
+      }
     }
   }
 
