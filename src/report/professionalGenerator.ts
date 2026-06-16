@@ -3307,8 +3307,21 @@ const looksLikeUnavailableRecoverySection = (
     const unavailableMetrics = parsed.data.metrics.filter((metric) => (
       /暂不比较|需资料确认|需医生复核/.test(`${metric.currentRisk}${metric.chinaReference}${metric.note}`)
     ))
+    const duplicatedMetricRows = parsed.data.metrics.filter((metric) => {
+      const metricText = normalizeText(metric.metric)
+      const currentRiskText = normalizeText(metric.currentRisk)
+      const noteText = normalizeText(metric.note)
+      return Boolean(metricText && (
+        metricText === currentRiskText ||
+        metricText === noteText ||
+        currentRiskText === noteText
+      ))
+    })
+    const outcomeRateLeak = /(?:\d+\s*年)?生存率|治愈率|>\s*\d+\s*%|\d+\s*[-~至]\s*\d+\s*%/.test(text)
     return unavailableMetrics.length === parsed.data.metrics.length &&
-      /资料不足|当前不展示|暂不/.test(`${parsed.data.positioning}${parsed.data.conclusion}`)
+      /资料不足|当前不展示|暂不/.test(`${parsed.data.positioning}${parsed.data.conclusion}`) ||
+      duplicatedMetricRows.length >= Math.max(1, parsed.data.metrics.length - 1) ||
+      outcomeRateLeak
   }
 
   const parsed = professionalReportSchema.shape.costBreakdown.safeParse(value)
