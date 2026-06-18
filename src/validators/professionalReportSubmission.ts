@@ -15,6 +15,13 @@ const isValidBirthDate = (value: string) => {
   return date <= now && date >= earliest
 }
 
+const normalizeDateOnly = (value: unknown) => {
+  if (value === null || value === undefined) return ''
+  const text = String(value).trim()
+  const dateOnly = text.match(/^(\d{4}-\d{2}-\d{2})/)
+  return dateOnly ? dateOnly[1] : text
+}
+
 export const professionalUploadedFileSchema = z.object({
   fieldName: z.string().trim().min(1).max(80),
   originalName: z.string().trim().min(1).max(240),
@@ -40,9 +47,9 @@ export const professionalReportSubmissionSchema = z.object({
   patient: z.object({
     fullName: z.string().trim().min(2).max(120),
     gender: z.enum(genders),
-    dateOfBirth: z.string().trim().max(10).optional().default('').refine((value) => (
+    dateOfBirth: z.preprocess(normalizeDateOnly, z.string().trim().max(10).optional().default('').refine((value) => (
       !value || (/^\d{4}-\d{2}-\d{2}$/.test(value) && isValidBirthDate(value))
-    ), 'Invalid date of birth'),
+    ), 'Invalid date of birth')),
     nationality: z.string().trim().max(80).optional().default(''),
     phone: z.string().trim().max(40).optional().default('').refine((value) => !value || phoneRegex.test(value), 'Invalid phone number'),
     email: z.string().trim().min(1).max(160).refine((value) => z.string().email().safeParse(value).success, 'Invalid email'),
