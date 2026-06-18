@@ -287,16 +287,83 @@ const getBreakdownTotalCost = (breakdown: GeneratedReport['plan']['breakdown']) 
   return formatUsdRange({ min, max })
 }
 
+const normalizeCountryNameForMatch = (value?: string) => (value || '')
+  .trim()
+  .replace(/¥/g, '￥')
+  .replace(/\s+/g, '')
+  .replace(/[（）()]/g, '')
+  .replace(/（?推荐）?/g, '')
+  .toLowerCase()
+
+const countryNameAliases: Record<string, string[]> = {
+  australia: ['澳大利亚', '澳洲', 'australia'],
+  澳大利亚: ['澳大利亚', '澳洲', 'australia'],
+  us: ['美国', '美國', 'unitedstates', 'usa', 'us', 'america', '美国us'],
+  usa: ['美国', '美國', 'unitedstates', 'usa', 'us', 'america'],
+  unitedstates: ['美国', '美國', 'unitedstates', 'usa', 'us', 'america'],
+  america: ['美国', '美國', 'unitedstates', 'usa', 'us', 'america'],
+  美国: ['美国', '美國', 'unitedstates', 'usa', 'us', 'america'],
+  singapore: ['新加坡', 'singapore'],
+  新加坡: ['新加坡', 'singapore'],
+  japan: ['日本', 'japan'],
+  日本: ['日本', 'japan'],
+  korea: ['韩国', '韓國', 'southkorea', 'korea'],
+  southkorea: ['韩国', '韓國', 'southkorea', 'korea'],
+  韩国: ['韩国', '韓國', 'southkorea', 'korea'],
+  uk: ['英国', '英國', 'unitedkingdom', 'uk', 'britain'],
+  unitedkingdom: ['英国', '英國', 'unitedkingdom', 'uk', 'britain'],
+  britain: ['英国', '英國', 'unitedkingdom', 'uk', 'britain'],
+  英国: ['英国', '英國', 'unitedkingdom', 'uk', 'britain'],
+  germany: ['德国', '德國', 'germany'],
+  德国: ['德国', '德國', 'germany'],
+  france: ['法国', '法國', 'france'],
+  法国: ['法国', '法國', 'france'],
+  canada: ['加拿大', 'canada'],
+  加拿大: ['加拿大', 'canada'],
+  newzealand: ['新西兰', '紐西蘭', 'newzealand'],
+  新西兰: ['新西兰', '紐西蘭', 'newzealand'],
+  thailand: ['泰国', '泰國', 'thailand'],
+  泰国: ['泰国', '泰國', 'thailand'],
+  malaysia: ['马来西亚', '馬來西亞', 'malaysia'],
+  马来西亚: ['马来西亚', '馬來西亞', 'malaysia'],
+}
+
+const countryNamesMatch = (countryName?: string, referenceName?: string) => {
+  const countryKey = normalizeCountryNameForMatch(countryName)
+  const referenceKey = normalizeCountryNameForMatch(referenceName)
+  if (!countryKey || !referenceKey) return false
+  if (countryKey === referenceKey || countryKey.includes(referenceKey) || referenceKey.includes(countryKey)) return true
+  const referenceAliases = countryNameAliases[referenceKey] || []
+  return referenceAliases
+    .map(normalizeCountryNameForMatch)
+    .some((alias) => alias && (countryKey === alias || countryKey.includes(alias) || alias.includes(countryKey)))
+}
+
+const fillReferenceCountryCost = (countries: GeneratedReport['countries'], costBreakdown?: GeneratedReport['plan']['costBreakdown']) => {
+  const referenceCountry = costBreakdown?.summary.referenceCountry
+  const referenceCost = costBreakdown?.summary.referenceCost?.trim()
+  if (!referenceCountry || !referenceCost || !parseUsdRange(referenceCost)) return countries
+
+  return countries.map((country) => (
+    countryNamesMatch(country.name, referenceCountry) && !parseUsdRange(country.fee)
+      ? { ...country, fee: referenceCost }
+      : country
+  ))
+}
+
 const normalizeReportCosts = (report: GeneratedReport): GeneratedReport => {
   const detailedChinaTotal = report.plan.costBreakdown?.summary.chinaTotal?.trim()
   if (detailedChinaTotal) {
     return {
       ...report,
-      countries: report.countries.map((country) => (
-        country.recommended || country.name.includes('中国')
-          ? { ...country, fee: detailedChinaTotal }
-          : country
-      )),
+      countries: fillReferenceCountryCost(
+        report.countries.map((country) => (
+          country.recommended || country.name.includes('中国')
+            ? { ...country, fee: detailedChinaTotal }
+            : country
+        )),
+        report.plan.costBreakdown,
+      ),
       plan: {
         ...report.plan,
         totalCost: detailedChinaTotal,
@@ -305,15 +372,23 @@ const normalizeReportCosts = (report: GeneratedReport): GeneratedReport => {
   }
 
   const totalCost = getBreakdownTotalCost(report.plan.breakdown)
-  if (!totalCost) return report
+  if (!totalCost) {
+    return {
+      ...report,
+      countries: fillReferenceCountryCost(report.countries, report.plan.costBreakdown),
+    }
+  }
 
   return {
     ...report,
-    countries: report.countries.map((country) => (
-      country.recommended || country.name.includes('中国')
-        ? { ...country, fee: totalCost }
-        : country
-    )),
+    countries: fillReferenceCountryCost(
+      report.countries.map((country) => (
+        country.recommended || country.name.includes('中国')
+          ? { ...country, fee: totalCost }
+          : country
+      )),
+      report.plan.costBreakdown,
+    ),
     plan: {
       ...report.plan,
       totalCost,
