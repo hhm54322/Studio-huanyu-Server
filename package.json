@@ -11,6 +11,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "reports:check-ocr": "tsx src/scripts/checkMedicalOcr.ts",
     "reports:verify-records": "tsx src/scripts/verifyMedicalRecordReportQuality.ts",
+    "reports:verify-cases": "tsx src/scripts/runCaseReportVerification.ts",
     "reports:preview-real-upload": "tsx src/scripts/generateRealUploadReportPreview.ts",
     "reports:stats": "tsx src/cli/reportGenerationStats.ts",
     "submissions:list": "tsx src/cli/submissions.ts list",

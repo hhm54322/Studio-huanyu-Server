@@ -78,9 +78,9 @@ const compact = (value: string, length = 220) => {
 
 const unique = <T>(items: T[]) => Array.from(new Set(items.filter(Boolean)))
 
-const normalizedForMatch = (text: string) => text.toLowerCase().replace(/\s+/g, '')
+const normalizedForMatch = (text: unknown) => String(text || '').toLowerCase().replace(/\s+/g, '')
 
-const includesAny = (text: string, keywords: string[]) => {
+const includesAny = (text: unknown, keywords: string[]) => {
   const normalized = normalizedForMatch(text)
   return keywords.some((keyword) => normalized.includes(normalizedForMatch(keyword)))
 }

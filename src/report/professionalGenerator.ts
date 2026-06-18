@@ -70,6 +70,17 @@ const includesAny = (text: string, keywords: string[]) => {
 
 const unique = (items: string[]) => Array.from(new Set(items.filter(Boolean)))
 
+const isChinaRegionLabel = (value: string) => /中国|China|Mainland\s*China|PRC|CN/i.test(value)
+
+const nonEmptyLayoutBlocks = (blocks: ReportLayoutSection['blocks']) => blocks.filter((block) => {
+  if (block.type === 'table') return (block.table?.rows.length || 0) > 0
+  if (block.type === 'cards') return (block.cards?.length || 0) > 0
+  if (block.type === 'timeline') return (block.timeline?.length || 0) > 0
+  if (block.type === 'list') return (block.items?.length || 0) > 0
+  if (block.type === 'summary') return (block.metrics?.length || 0) > 0
+  return true
+})
+
 const getProfessionalIntentLabels = (input: ProfessionalReportSubmissionInput) => ({
   careNeedLabel: getCareNeedLabel(input.medical.careNeed, input.medical.careNeedOther),
   expectedTreatmentTimeLabel: getExpectedTreatmentTimeLabel(input.medical.expectedTreatmentTime),
@@ -126,6 +137,186 @@ const getTreatmentTimeFocus = (input: ProfessionalReportSubmissionInput) => {
   }
 }
 
+const getProfessionalTreatmentExecutionPromptHints = (context: ProfessionalContext) => {
+  const { input, disease, diseaseKey } = context
+  const careNeedLabel = getCareNeedLabel(input.medical.careNeed, input.medical.careNeedOther)
+  const text = [
+    input.medical.chiefComplaint,
+    input.medical.diagnosis,
+    input.medical.stage,
+    input.medical.pathologySummary,
+    input.medical.imagingSummary,
+    input.medical.geneticSummary,
+    input.medical.treatmentHistory,
+    input.medical.medicationHistory,
+    careNeedLabel,
+    disease.treatment,
+    context.medicalFacts.summary,
+    ...context.medicalFacts.evidenceHighlights,
+  ].join(' ')
+  const hints: string[] = []
+  const add = (pattern: RegExp, label: string) => {
+    if (pattern.test(text)) hints.push(label)
+  }
+
+  if (diseaseKey === 'cardiovascular_tumor') {
+    hints.push(
+      '心脏占位/右房肿物切除手术执行费（含麻醉、体外循环或ICU、住院，按是否手术注明条件）',
+      '介入取栓/导管评估或介入活检费用（如影像提示适用）',
+      '心脏MRI、经食道超声、凝血和心功能评估费用',
+    )
+  }
+  if (diseaseKey === 'lung_cancer') {
+    hints.push(
+      'EGFR-TKI靶向药物首月费用（如奥希替尼/阿美替尼/伏美替尼等，需医生确认具体药物）',
+      '骨转移支持治疗费用（骨保护药物、止痛或骨科/放疗支持，按适用性注明）',
+      '骨转移局部放疗或镇痛支持治疗费用（如疼痛或承重骨风险适用）',
+    )
+  }
+  if (diseaseKey === 'liver_cancer') {
+    hints.push(
+      'TACE/HAIC介入治疗执行费（单次或疗程，需按肝功能和门静脉情况确认）',
+      '肝癌消融治疗执行费（射频/微波消融，按病灶位置和数量确认）',
+      '肝癌系统治疗首月费用（靶向/免疫药物，需医生确认适应证）',
+    )
+  }
+  if (diseaseKey === 'endocrinology_metabolism') {
+    hints.push(
+      '糖尿病并发症筛查费用（眼底、尿微量白蛋白、周围神经检查等）',
+      '动态血糖监测/CGM或强化血糖监测费用',
+      '个体化用药调整及慢病药物首月费用（如胰岛素、GLP-1、SGLT2等，需医生确认）',
+    )
+  }
+
+  add(/微创|胸腔镜|机器人|手术|切除|搭桥|CABG/i, '手术执行费（含麻醉、住院、围术期，不写成可行性评估）')
+  add(/消融|射频|微波/i, '消融治疗执行费（单次或疗程，不写成消融评估）')
+  add(diseaseKey === 'cardiovascular_tumor' ? /TACE|HAIC/i : /TACE|HAIC|介入/i, 'TACE/HAIC/介入治疗执行费（单次或疗程，不写成介入评估）')
+  add(/放疗|质子|重离子|伽玛刀|放射外科/i, '放疗/质子重离子/放射外科疗程费用')
+  add(/化疗/i, '化疗周期费用')
+  add(/靶向|免疫|PD-?1|PD-?L1|EGFR|ALK|ROS1|TKI|奥希替尼/i, '靶向/免疫/系统药物治疗首月或单周期费用')
+  add(/支架|PCI/i, '冠脉造影+PCI支架介入执行费（含支架材料）')
+  add(/根管/i, '根管治疗执行费')
+  add(/种植/i, '种植手术及修复费用')
+  add(/修复|贴面|牙冠/i, '牙体修复/贴面/牙冠费用')
+
+  if (!hints.length && !['premium_checkup'].includes(diseaseKey)) {
+    hints.push('由医疗模型选择的具体治疗执行费，例如手术/介入/消融/放疗/药物/口腔治疗等，不能写成“主要治疗执行费用”或方案评估费')
+  }
+
+  return unique(hints).slice(0, 6)
+}
+
+const getProfessionalTreatmentExecutionCostExamples = (context: ProfessionalContext) => {
+  const hints = getProfessionalTreatmentExecutionPromptHints(context)
+  const examples = hints.map((hint) => {
+    if (/心脏占位|右房肿物|体外循环|ICU/i.test(hint)) return '心脏占位切除手术及麻醉/ICU/住院费用'
+    if (/介入取栓|导管评估|介入活检/i.test(hint)) return '介入取栓/导管评估或介入活检费用'
+    if (/心脏MRI|经食道超声|心功能/i.test(hint)) return '心脏MRI/经食道超声/心功能评估费用'
+    if (/并发症筛查|眼底|尿微量白蛋白|周围神经/i.test(hint)) return '糖尿病并发症筛查费用'
+    if (/动态血糖|CGM|血糖监测/i.test(hint)) return '动态血糖监测/CGM费用'
+    if (/用药调整|慢病药物|胰岛素|GLP-?1|SGLT2/i.test(hint)) return '个体化用药调整及慢病药物首月费用'
+    if (/EGFR|TKI|奥希替尼|阿美替尼|伏美替尼/i.test(hint)) return 'EGFR-TKI靶向药物首月费用'
+    if (/骨转移|骨保护|镇痛/i.test(hint)) return '骨转移支持治疗费用'
+    if (/肝癌|TACE|HAIC/i.test(hint)) return 'TACE/HAIC介入治疗费用'
+    if (/系统治疗|靶向|免疫/i.test(hint)) return '系统治疗药物首月费用'
+    if (/手术|麻醉|住院|围术期|CABG|搭桥|机器人|微创/i.test(hint)) return '手术费及麻醉住院费用'
+    if (/消融|射频|微波/i.test(hint)) return '消融治疗执行费用'
+    if (/TACE|HAIC|介入/i.test(hint)) return 'TACE/HAIC介入治疗费用'
+    if (/放疗|质子|重离子|放射/i.test(hint)) return '放疗/质子重离子疗程费用'
+    if (/化疗/i.test(hint)) return '化疗单周期或首疗程费用'
+    if (/靶向|免疫|系统药物|药物|PD-?1|PD-?L1|EGFR|ALK|ROS1|TKI/i.test(hint)) return '靶向/免疫/系统药物首月费用'
+    if (/PCI|支架/i.test(hint)) return '冠脉造影+PCI支架介入费用'
+    if (/根管/i.test(hint)) return '根管治疗执行费用'
+    if (/种植/i.test(hint)) return '种植手术及修复费用'
+    if (/修复|贴面|牙冠/i.test(hint)) return '牙体修复/贴面/牙冠费用'
+    return hint.replace(/（.*?）/g, '').replace(/，.*$/, '').trim()
+  }).filter(Boolean)
+
+  return unique(examples).slice(0, 4)
+}
+
+const getProfessionalDiseaseSpecificPromptHints = (context: ProfessionalContext) => {
+  const { diseaseKey, disease, input } = context
+  const base = [
+    `当前就医目的：${disease.label}；请围绕用户主诉、诊断状态和上传资料回吐页面需要展示的数据。`,
+  ]
+
+  const hints: Record<string, string[]> = {
+    dental: [
+      '牙科预后/管理价值对比不能写治疗成功率或治愈率；应围绕保牙窗口、急性牙髓/根尖感染风险、根管后修复稳定性、拔牙后种植复杂度、复诊维护连续性来写。',
+      '深龋、冷热刺激痛、夜间痛和种植诉求同时出现时，metrics 可写“保牙判断窗口”“感染/疼痛风险管理”“根管后修复稳定性”“种植路径复杂度”；currentRisk 写当前症状和资料缺口带来的风险，chinaReference 写鼎植口腔通过CBCT、牙髓活力、牙周探诊和数字化种植规划可降低的不确定性。',
+      '即使缺少CBCT、牙周检查或牙列照片，也要给可用于决策的管理价值表达，例如“先判断患牙能否保留，再决定根管、拔牙或种植路径”，不要整节返回“暂不比较”。',
+    ],
+    cardiovascular_tumor: [
+      '右心房/心脏占位即使病理未确认，也可以基于心脏超声、CT/MRI、症状和心功能给出审慎候选医院、国家对比、费用和行程；不要因为缺病理就只返回“暂不推荐”。',
+      '医院推荐优先围绕心血管影像复核、心内科/心外科/影像科MDT、右心房占位良恶性鉴别、手术/介入取栓或肿瘤切除风险评估；preparation 中写明需提交心脏MRI/超声/CT原片、心功能和抗凝/用药记录。',
+      '核心摘要必须直接回应：右心房约3.2cm占位、活动后气短/心悸、需复核心脏MRI、良恶性/血栓鉴别、心外科手术或介入取栓/切除方案评估和资料缺口。',
+      '技术优势可写心脏MRI/经食道超声影像复核、心内-心外-影像MDT、右心房占位围术期麻醉/ICU管理、介入取栓或手术切除路径比选；不要写“前沿疗法匹配/暂不生成”。',
+      '费用必须给条件性区间：心脏MRI/经食道超声和心功能复核、MDT/专家预审、心脏占位切除手术及麻醉ICU住院、介入取栓/导管评估或活检、术后监护/药物；如果最终不手术，在 note 中写明按医生预审确认。',
+      '来华行程必须覆盖：出发前影像原片和保险预授权、D1-D3心脏MRI/超声/建档、D4-D7心内心外MDT、D8-D14手术/介入可行性和费用确认、后续治疗或回国随访。',
+      '预后/价值对比只写诊断时效、栓塞/血流动力学风险管理、MDT决策价值和围术期风险分层；不要写治疗成功率、长期生存率或治愈率。',
+    ],
+    endocrinology_metabolism: [
+      '内分泌慢病行程中的执行阶段可以是并发症筛查、CGM/血糖监测、用药调整、营养运动管理和远程随访，不必强行写手术或住院治疗。',
+      '预后/价值对比聚焦HbA1c控制风险、神经/肾/眼底并发症筛查、用药方案优化和随访管理价值；不要承诺改善幅度或治愈。',
+    ],
+    breast_cancer: [
+      '乳腺癌预后/管理价值对比不能写生存率、治愈率、缓解率或成功率；应围绕TNM/腋窝淋巴结确认窗口、保乳vs全切决策、新辅助治疗必要性、术后放疗/化疗/内分泌治疗衔接和跨境随访管理价值。',
+      'ER/PR阳性、HER2阴性、Ki-67较高或腋窝可疑时，metrics 可写“分期确认窗口”“手术路径决策”“腋窝风险管理”“辅助治疗连续性”；currentRisk 写当前资料带来的决策风险，chinaReference 写中国MDT/病理影像复核可降低的不确定性，note 写需补充TNM、腋窝穿刺或BRCA等前提。',
+      '若资料不足，也要给可用于决策的治疗窗口和管理价值表达，例如“需先确认腋窝淋巴结状态后决定保乳/全切和放疗范围”，不要整节返回“暂不比较”。',
+    ],
+    lung_cancer: [
+      'EGFR突变晚期肺腺癌费用不能只写基因检测、MDT、影像和方案咨询；必须拆出EGFR-TKI靶向药物首月/疗程费用，并按骨转移情况写骨保护药物、镇痛支持或局部放疗等条件性费用。',
+      '肺癌医院推荐应围绕胸部肿瘤MDT、病理/分子复核、EGFR-TKI用药排序、骨转移支持治疗、放疗或姑息支持能力；preparation 写明需提交病理、基因检测、PD-L1、PET/CT、骨转移影像和既往用药。',
+      '肺癌预后/价值对比只写治疗窗口、驱动基因确认、骨转移并发症管理、用药可及性和随访管理价值；不要输出生存率、缓解率、有效率或治愈率。',
+    ],
+    liver_cancer: [
+      '肝癌费用不能只写增强MRI、AFP、肝功能和会诊；必须按当前资料拆出TACE/HAIC介入、射频/微波消融、系统治疗药物首月或围手术期候选费用，并在 note 中注明需按肝功能、门静脉侵犯和病灶位置确认。',
+      '肝癌医院推荐应围绕肝胆外科、介入治疗、肿瘤内科、影像复核和乙肝/肝硬化管理；preparation 写明需提交增强MRI/CT原片、AFP、肝功能Child-Pugh、凝血、HBV DNA和门静脉情况。',
+      '肝癌预后/价值对比只写肝功能储备、治疗窗口、介入/消融/系统治疗排序、乙肝背景管理和复查随访价值；不要输出生存率、治愈率或治疗成功率。',
+    ],
+    nasopharyngeal_cancer: [
+      '鼻咽癌预后/价值对比聚焦TNM/头颈MRI/EBV DNA复核、放疗计划质量、诱导/同步化疗决策、营养口腔听力吞咽支持和随访基线；不要输出5年生存率、治愈率或治疗成功率。',
+    ],
+    spine_surgery: [
+      '脊柱外科预后/管理价值对比不能写治疗成功率或治愈率；应围绕神经功能进展、手术窗口、马尾综合征/大小便功能排查、保守治疗失败后的微创手术排序、术后康复和回国随访基线。',
+      '腰椎间盘突出伴肌力下降时，metrics 可写“神经功能窗口”“手术指征确认”“急症风险排查”“康复随访连续性”；currentRisk 写足背肌力下降、神经根压迫、既往保守治疗效果有限等当前风险，chinaReference 写脊柱专科通过MRI复核、肌力分级、微创/开放手术比选和康复计划降低的不确定性。',
+      '即使缺少疼痛评分或大小便功能，也要给可用于决策的风险管理表达，例如“需先排除马尾综合征并量化肌力变化后决定是否加速手术评估”，不要整节返回“暂不比较”。',
+    ],
+    premium_checkup: [
+      '高端体检行程中的执行阶段可以是风险问卷、影像/内镜/实验室筛查、专家解读、异常结果专科承接和远程健康管理。',
+    ],
+  }
+
+  const candidateHospitals = disease.hospitals
+    .map((hospital, index) => `${index + 1}. ${hospital.city}${hospital.name}：${hospital.reason}`)
+    .join('；')
+  const hospitalHint = candidateHospitals
+    ? `知识库候选医院仅供医疗模型选择和改写，不是前端兜底：${candidateHospitals}。`
+    : ''
+
+  const inputHint = [
+    input.medical.diagnosis ? `用户诊断/方向：${input.medical.diagnosis}` : '',
+    input.medical.stage ? `分期/严重程度：${input.medical.stage}` : '',
+    input.medical.chiefComplaint ? `主诉关键词：${limitText(input.medical.chiefComplaint, 180)}` : '',
+  ].filter(Boolean).join('；')
+
+  return unique([
+    ...base,
+    inputHint,
+    hospitalHint,
+    ...(hints[diseaseKey] || []),
+  ]).filter(Boolean)
+}
+
+const getCandidateHospitalPromptData = (context: ProfessionalContext) => (
+  context.disease.hospitals.map((hospital) => ({
+    city: hospital.city,
+    hospital: hospital.name,
+    reason: hospital.reason,
+  }))
+)
+
 const getSubmittedEvidenceText = (input: ProfessionalReportSubmissionInput) => [
   input.medical.visitPurpose,
   input.medical.diagnosis,
@@ -149,20 +340,7 @@ const getSelectedRegions = (selectedRegions: string[]) => {
 const resolveDisease = (input: ProfessionalReportSubmissionInput) => {
   const requestedKey = purposeAliases[input.medical.visitPurpose] || input.medical.visitPurpose
   if (diseases[requestedKey]) return { key: requestedKey, disease: diseases[requestedKey] }
-
-  const text = getSubmittedEvidenceText(input)
-
-  const matched = Object.entries(diseases)
-    .filter(([key]) => key !== 'other')
-    .map(([key, disease]) => ({
-      key,
-      disease,
-      hits: disease.keywords.filter((keyword) => normalizeText(text).includes(normalizeText(keyword))).length,
-    }))
-    .filter((item) => item.hits > 0)
-    .sort((left, right) => right.hits - left.hits)[0]
-
-  return matched ? { key: matched.key, disease: matched.disease } : { key: 'other', disease: defaultDisease }
+  return { key: 'other', disease: defaultDisease }
 }
 
 const professionalMaterialMap: Record<string, string[]> = {
@@ -187,6 +365,9 @@ const decisionQuestionMap: Record<string, string[]> = {
   neurosurgery: ['病灶性质和手术风险是否明确？', '是否需要显微手术、放射外科、药物治疗或观察随访？', '当前症状是否提示急性神经功能风险？'],
   spine_surgery: ['神经压迫程度是否达到手术指征？', '保守治疗、微创手术和开放手术如何排序？', '术后康复和回国复查如何衔接？'],
   cardiology_cardiothoracic: ['是否仅需门诊评估、介入治疗或外科手术？', '心功能和围术期风险等级如何？', '治疗后康复和长期用药如何管理？'],
+  cardiovascular_tumor: ['右心房占位更符合肿瘤、血栓还是其他结构性病变？', '心脏MRI/超声和心功能是否支持手术、介入取栓或先观察复查？', '是否存在晕厥、心律失常、栓塞或右心功能受影响等需先当地处理的风险？'],
+  endocrinology_metabolism: ['HbA1c和血糖波动是否提示当前方案需要调整？', '是否已有周围神经、肾脏、眼底或心血管并发症证据？', '来华评估应优先做哪些检查并如何衔接回国后的慢病管理？'],
+  nasopharyngeal_cancer: ['病理、TNM分期、EBV DNA和头颈MRI是否足够决定放化疗策略？', '是否需要诱导化疗、同步化疗、精准放疗计划复核或复发后系统治疗评估？', '放疗前口腔、营养、听力和吞咽管理如何安排？'],
   premium_checkup: ['筛查项目是否与年龄、家族史和症状匹配？', '异常结果由哪个专科承接？', '是否需要把体检和专科二诊合并安排？'],
   other: ['最优先的主责专科是什么？', '是否存在需要先在当地处理的危险信号？', '来华前还缺哪些资料才能让专家有效预审？'],
 }
@@ -264,28 +445,66 @@ const getRedFlags = (input: ProfessionalReportSubmissionInput, diseaseKey: strin
   return flags
 }
 
+const professionalTreatmentExecutionPattern = /手术费|手术|麻醉|住院|围术期|ICU|体外循环|占位切除|肿物切除|取栓|导管治疗|导管评估|介入活检|消融|TACE|HAIC|介入治疗|介入|靶向治疗|靶向|免疫治疗|免疫|放疗|化疗|放化疗|同步放化疗|药物治疗|系统治疗|辅助治疗|新辅助|内分泌治疗|抗肿瘤|用药|药品|药物|首月|周期|疗程|根管治疗|种植手术|种植|修复|支架|搭桥|CABG|PCI|骨保护|放射外科|伽玛刀|质子|重离子|TKI|EGFR|ALK|ROS1|PD-?1|PD-?L1|CDK4\/6|ADC|奥希替尼|阿美替尼|伏美替尼|替莫唑胺|贝伐珠单抗|帕博利珠单抗|纳武利尤单抗|特瑞普利单抗|胰岛素|GLP-?1|SGLT2/i
+const professionalAssessmentOnlyPattern = /可行性评估|方案评估|治疗评估|系统治疗评估|初步评估|路径评估|路径讨论|方案讨论|MDT|会诊|咨询|复核|检查|检测|影像|病理|诊断复核|初步治疗评估|介入评估/i
+
+const normalizeCostUnitValue = (value: number, unit?: string) => {
+  if (unit === 'k' || unit === 'K' || unit === '千') return value * 1000
+  if (unit === '万') return value * 10000
+  return value
+}
+
 const parseCostValues = (cost: string, pattern: RegExp, divisor = 1) => {
   const matches = [...cost.replace(/,/g, '').matchAll(pattern)]
   return matches.map((match) => {
     const value = Number(match[1])
-    const unit = match[2]
-    const normalized = unit === 'k' || unit === 'K' || unit === '千'
-      ? value * 1000
-      : unit === '万'
-        ? value * 10000
-        : value
-    return normalized / divisor
+    return normalizeCostUnitValue(value, match[2]) / divisor
   }).filter((value) => Number.isFinite(value) && value > 0)
 }
 
+const parseLooseCostValues = (cost: string, divisor = 1) => {
+  const normalizedCost = cost.replace(/,/g, '')
+  const inferTenThousand = /万元|万人民币|万\s*(?:元|RMB|CNY)/i.test(normalizedCost)
+  const inferThousand = /千元|千人民币|千\s*(?:元|RMB|CNY)/i.test(normalizedCost)
+  return [...normalizedCost.matchAll(/(\d+(?:\.\d+)?)(?:\s*(k|K|千|万))?/g)]
+    .map((match) => {
+      const value = Number(match[1])
+      const unit = match[2] || (inferTenThousand && value < 1000 ? '万' : inferThousand && value < 1000 ? '千' : undefined)
+      return normalizeCostUnitValue(value, unit) / divisor
+    })
+    .filter((value) => Number.isFinite(value) && value > 0)
+}
+
+const parseMarkedCostRangeValues = (cost: string, markerPattern: string, divisor = 1) => {
+  const normalizedCost = cost.replace(/,/g, '').replace(/¥/g, '￥')
+  const pattern = new RegExp(`${markerPattern}\\s*(\\d+(?:\\.\\d+)?)(?:\\s*(k|K|千|万))?(?:\\s*(?:-|~|到|至)\\s*${markerPattern}?\\s*(\\d+(?:\\.\\d+)?)(?:\\s*(k|K|千|万))?)?`, 'gi')
+  const values: number[] = []
+  for (const match of normalizedCost.matchAll(pattern)) {
+    const first = Number(match[1])
+    const second = match[3] ? Number(match[3]) : undefined
+    if (Number.isFinite(first) && first > 0) values.push(normalizeCostUnitValue(first, match[2]) / divisor)
+    if (typeof second === 'number' && Number.isFinite(second) && second > 0) values.push(normalizeCostUnitValue(second, match[4]) / divisor)
+  }
+  return values
+}
+
 const parseUsdRange = (cost: string): CostRange | null => {
-  const usdValues = parseCostValues(cost, /\$\s*(\d+(?:\.\d+)?)(?:\s*(k|K|千|万))?/g)
-  const values = usdValues.length
-    ? usdValues
-    : parseCostValues(cost, /(?:¥|￥|人民币|RMB)\s*(\d+(?:\.\d+)?)(?:\s*(k|K|千|万))?/gi, 7.2)
-  const fallbackValues = values.length
-    ? values
-    : parseCostValues(cost, /\$?\s*(\d+(?:\.\d+)?)(?:\s*(k|K|千|万))?/g)
+  const hasUsdMarker = /[$]|USD|美元/i.test(cost)
+  const hasCnyMarker = /[¥￥]|人民币|RMB|CNY|元/i.test(cost)
+  const cnyValues = hasCnyMarker
+    ? parseMarkedCostRangeValues(cost, '(?:￥|人民币|RMB|CNY)', 7.2)
+    : []
+  const usdValues = hasUsdMarker
+    ? parseMarkedCostRangeValues(cost, '(?:\\$|USD|美元)')
+    : []
+  const fallbackCnyValues = !cnyValues.length && hasCnyMarker ? parseLooseCostValues(cost, 7.2) : []
+  const fallbackValues = cnyValues.length
+    ? cnyValues
+    : usdValues.length
+      ? usdValues
+      : fallbackCnyValues.length
+        ? fallbackCnyValues
+        : parseLooseCostValues(cost)
 
   if (!fallbackValues.length) return null
   return { min: Math.min(...fallbackValues), max: Math.max(...fallbackValues) }
@@ -301,7 +520,7 @@ const sumRanges = (ranges: Array<CostRange | null>) => {
 }
 
 const formatUsd = (value: number) => `$${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value)}`
-const formatCny = (value: number) => `¥${new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 }).format(Math.round(value * 7.2))}`
+const formatCny = (value: number) => `￥${new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 }).format(Math.round(value * 7.2))}`
 
 const formatDualRange = (range: CostRange | null, fallback: string) => {
   if (!range) return fallback
@@ -639,7 +858,7 @@ const getDocumentDatesByKeywords = (context: ProfessionalContext, keywords: stri
       ...document.findings.map((finding) => finding.text),
       ...document.sourceEvidence,
     ].join(' '), keywords))
-    .flatMap((document) => [document.primaryDate, ...document.dates])
+    .flatMap((document) => [document.primaryDate, ...(Array.isArray(document.dates) ? document.dates : [])])
     .filter(Boolean),
 )
 
@@ -661,7 +880,7 @@ const buildMetastaticBreastCaseNarrative = (context: ProfessionalContext) => {
   const breastImagingDates = getDocumentDatesByKeywords(context, ['BIRADS', 'BI-RADS', 'mammography', '钼靶', '乳腺'])
   const allDates = uniqueSortedDates([
     ...context.medicalFacts.timeline.map((item) => item.date),
-    ...context.medicalFacts.documents.flatMap((document) => [document.primaryDate, ...document.dates]),
+    ...context.medicalFacts.documents.flatMap((document) => [document.primaryDate, ...(Array.isArray(document.dates) ? document.dates : [])]),
   ])
   const firstDate = allDates[0] || ''
   const latestDate = allDates[allDates.length - 1] || ''
@@ -743,7 +962,7 @@ const buildSpecialtyFactNarrative = (context: ProfessionalContext): SpecialtyFac
   const diseaseLabel = context.disease.label
   const allDates = uniqueSortedDates([
     ...context.medicalFacts.timeline.map((item) => item.date),
-    ...context.medicalFacts.documents.flatMap((document) => [document.primaryDate, ...document.dates]),
+    ...context.medicalFacts.documents.flatMap((document) => [document.primaryDate, ...(Array.isArray(document.dates) ? document.dates : [])]),
   ])
   const firstDate = allDates[0] || '早期资料'
   const latestDate = allDates[allDates.length - 1] || '最新资料'
@@ -1893,7 +2112,7 @@ const buildProfessionalTabs = (report: ProfessionalReport, context: Professional
       label: isDental && key === 'hospitals' ? '推荐牙科机构' : base.label,
       labelEn: isDental && key === 'hospitals' ? 'Recommended Dental Provider' : base.labelEn,
       summary,
-      blocks,
+      blocks: nonEmptyLayoutBlocks(blocks),
     }
   }
   const recordTimeline = context.medicalFacts.timeline.length
@@ -1988,9 +2207,7 @@ const buildProfessionalTabs = (report: ProfessionalReport, context: Professional
       },
     },
   ]
-  const recordBlocks: ReportLayoutSection['blocks'] = rawRecordBlocks.filter((block) => (
-    block.type !== 'table' || (block.table?.rows.length || 0) > 0
-  ))
+  const recordBlocks = nonEmptyLayoutBlocks(rawRecordBlocks)
 
   return [
     makeTab('records', context.medicalFacts.hasActionableFacts
@@ -2340,10 +2557,10 @@ const buildPrompt = (context: ProfessionalContext, ruleReport: ProfessionalRepor
       content: [
         '你是寰宇云医的专业版来华就医报告生成助手，服务对象是外籍患者和家属。',
         '你必须生成专业、审慎、可执行的中文结构化报告，不要口语化安抚，不要营销夸大。',
-        '严格基于用户资料、上传文件清单、规则基线和给定知识摘要；缺资料就列为缺失材料，不得编造病理、影像、基因检测、医生姓名、案例或疗效数据。',
+        '严格基于用户资料、上传文件清单和给定知识摘要；缺资料就列为缺失材料，不得编造病理、影像、基因检测、医生姓名、案例或疗效数据。',
         '不要把科室标签等同于诊断；未确诊时使用“工作方向/需确认”。',
         '费用必须拆为三类：核心医疗费用、专属配套增值服务费用、外籍在华生活刚需费用，并说明波动原因。',
-        '费用币种、总价和三类费用结构必须沿用规则基线；不要擅自把人民币改成美元或把美元改成人民币。',
+        '费用必须拆分清楚；后端会对模型返回的金额做人民币/美元格式化、汇总和必要换算。',
         '报告必须回应用户填写的具体主诉、诊断、病理、影像、基因和既往治疗内容。',
         '如 uploaded/parsed 文件中有可用正文摘要，必须纳入病情判断和缺失材料判断；若解析失败或内容不足，必须如实说明。',
         '不要把 OCR 调试文本、患者姓名/ID、出生日期、Study Date、Accession No 或截断半句写入正式报告。',
@@ -2478,13 +2695,16 @@ const trackGenerationPhase = async <T>(
 
 const buildClinicalPatchPrompt = (context: ProfessionalContext, ruleReport: ProfessionalReport): MedicalLlmMessage[] => {
   const { input, disease, diseaseKey, selectedRegions, dataCompleteness, missingMaterials, decisionQuestions, redFlags, submissionNo, dateLabel, documentKnowledge } = context
+  const diseaseSpecificHints = getProfessionalDiseaseSpecificPromptHints(context)
 
   return [
     {
       role: 'system',
       content: [
         '你是寰宇云医专业版报告的医学内容增强助手。',
-        '系统已经有一份完整规则基线报告；你只需要输出用于增强专业性的 JSON patch，不要输出完整报告。',
+        '请根据用户全部输入、上传资料解析结果和专业报告页面章节需求，直接返回医学核心章节 JSON 数据。',
+        '后端只做字段兼容、结构归一化和缺项重试，不会自行生成医学判断。',
+        '必须一次性返回 allowedPatchFields 中列出的全部顶层字段；不要只返回其中一部分，某节资料有限也要输出可展示的审慎内容和资料前提。',
         '必须严格贴合患者科室、诊断、主诉、病理、影像、基因和既往治疗资料。',
         '不得编造未提交的检查结果、医生姓名、疗效承诺、治愈率或保险报销结论。',
         '缺资料要明确列为缺失材料；急症风险要先建议当地处理。',
@@ -2496,7 +2716,7 @@ const buildClinicalPatchPrompt = (context: ProfessionalContext, ruleReport: Prof
     {
       role: 'user',
       content: JSON.stringify({
-        task: '生成专业版报告医学核心 JSON patch',
+        task: '生成专业版报告医学核心章节 JSON',
         fixedFields: { id: submissionNo, date: dateLabel, generatedBy: 'llm' },
         allowedPatchFields: [
           'executiveSummary',
@@ -2510,10 +2730,10 @@ const buildClinicalPatchPrompt = (context: ProfessionalContext, ruleReport: Prof
         ],
         outputRequirements: {
           executiveSummary: '5条以内，必须回应具体主诉、分期/指标、来华价值、治疗目标和资料缺口',
-          diagnosticConclusion: 'finalImpression/severityInterpretation/indicatorInterpretations/evidenceBasis；指标解释不超过4项',
+          diagnosticConclusion: 'finalImpression/severityInterpretation/indicatorInterpretations/evidenceBasis；indicatorInterpretations 必须1-4项，可解释化验指标、影像征象、症状体征、病理/基因结果或既往治疗反应',
           clinicalAssessment: 'workingDiagnosis/severity/keyFindings/redFlags/missingMaterials/decisionQuestions；每个数组最多5项',
           treatmentPathway: 'goal + 至少3个 phases；每个 phase 包含 phase/timeline/actions/output，必须先资料复核再治疗执行',
-          prognosisComparison: 'positioning + metrics + conclusion；只做治疗窗口、风险和管理价值对比，不承诺疗效',
+          prognosisComparison: 'positioning + 至少3项 metrics + conclusion；只做治疗窗口、风险管理、资料复核、MDT/专科预审和跨境随访价值对比，不承诺疗效/治愈/生存获益；metrics 不能为空',
           technologyAdvantages: '至少3项，说明技术/能力、价值和适用前提',
           risksAndDisclaimers: '至少4条，包含资料不完整、医生最终确认、费用波动、跨境就医和急症优先当地处理',
           nextSteps: '4-5条可执行动作，按优先级排序',
@@ -2533,6 +2753,7 @@ const buildClinicalPatchPrompt = (context: ProfessionalContext, ruleReport: Prof
           missingMaterials,
           decisionQuestions,
           redFlags,
+          diseaseSpecificHints,
           dentalPartner: diseaseKey === 'dental' ? dentalPartner : undefined,
           documentKnowledge: documentKnowledge.map((block) => ({
             category: block.category,
@@ -2556,16 +2777,21 @@ const buildClinicalPatchPrompt = (context: ProfessionalContext, ruleReport: Prof
             })).slice(0, 8),
           },
         },
-        baselineRuleReport: {
+        pageFieldReference: {
           patientSnapshot: compactRuleReportForPrompt(ruleReport).patientSnapshot,
-          diagnosticConclusion: compactRuleReportForPrompt(ruleReport).diagnosticConclusion,
-          clinicalAssessment: compactRuleReportForPrompt(ruleReport).clinicalAssessment,
-          executiveSummary: compactRuleReportForPrompt(ruleReport).executiveSummary,
-          nextSteps: ruleReport.nextSteps.slice(0, 5),
         },
         qualityRules: [
+          '必须返回 allowedPatchFields 中的全部字段：executiveSummary、diagnosticConclusion、clinicalAssessment、treatmentPathway、prognosisComparison、technologyAdvantages、risksAndDisclaimers、nextSteps；不得省略 risksAndDisclaimers 或 nextSteps。',
           '只使用当前患者事实和专业资料要点，不复制模板段落。',
           '科室和症状不一致时必须指出需要重新分诊；不能强行套用科室。',
+          'diagnosticConclusion.indicatorInterpretations 不能空；如果没有化验指标，也要基于用户已提供的影像征象、症状体征、病理/基因结果或既往治疗反应输出1-4项解释。',
+          'diagnosticConclusion.evidenceBasis 至少2条，必须拆成数组项，例如主诉、影像、病理、基因、既往治疗反应、上传资料摘要；不要把多条证据合并成一个字符串。',
+          'clinicalAssessment.workingDiagnosis 必须是非空自然中文，优先使用用户诊断/工作方向；不要返回空字符串。',
+          'prognosisComparison.metrics 至少3项，必须围绕非疗效指标，例如治疗窗口、风险管理、资料复核、MDT/专科预审、康复连续性或跨境随访；metric/currentRisk/chinaReference/note 都必须非空且不能互相重复。',
+          'prognosisComparison 不能使用“治疗成功率、长期生存率、治愈率、生存率、缓解率、有效率、OS、PFS”或任何百分比疗效指标；不得返回空 metrics 或整节“资料不足/暂不比较”。',
+          diseaseKey === 'spine_surgery' ? '脊柱外科 prognosisComparison 必须至少包含“神经功能窗口”“手术指征确认”“急症风险排查”“康复随访连续性”中的3项。' : '',
+          diseaseKey === 'dental' ? '牙科 prognosisComparison 必须至少包含“保牙判断窗口”“感染/疼痛风险管理”“根管后修复稳定性”“种植路径复杂度”“复诊维护连续性”中的3项。' : '',
+          diseaseKey === 'breast_cancer' ? '乳腺癌 prognosisComparison 必须至少包含“分期确认窗口”“保乳/全切决策”“腋窝风险管理”“辅助治疗连续性”“跨境随访基线”中的3项。' : '',
           '正式报告证据只能保留临床结论、指标、影像部位、检查日期和治疗史，不要保留患者身份或识别器摘要。',
           '本 patch 只输出医学核心字段，不输出 costBreakdown、countryComparison、hospitalRecommendations、itinerary、servicePlan 或 paymentAndInsurance。',
           diseaseKey === 'dental' ? `牙科仅围绕${dentalPartner.name}和患者口腔资料增强诊断/下一步，不要新增其他口腔医院。` : '',
@@ -2578,26 +2804,36 @@ const buildClinicalPatchPrompt = (context: ProfessionalContext, ruleReport: Prof
 
 const buildPlanningPatchPrompt = (context: ProfessionalContext, ruleReport: ProfessionalReport): MedicalLlmMessage[] => {
   const { input, disease, diseaseKey, selectedRegions, dataCompleteness, missingMaterials, decisionQuestions, redFlags, documentKnowledge } = context
-  const baseline = compactRuleReportForPrompt(ruleReport)
-
+  const treatmentExecutionHints = getProfessionalTreatmentExecutionPromptHints(context)
+  const treatmentCostExamples = getProfessionalTreatmentExecutionCostExamples(context)
+  const diseaseSpecificHints = getProfessionalDiseaseSpecificPromptHints(context)
+  const candidateHospitals = getCandidateHospitalPromptData(context)
+  const chronicOrScreeningCostNote = ['endocrinology_metabolism', 'premium_checkup'].includes(diseaseKey)
+    ? '慢病/体检类病例的核心医疗执行费用可以是并发症筛查、动态监测、用药调整、营养运动管理、专家解读和远程随访，不必强行写手术或住院；但仍需给可解析金额区间。'
+    : ''
   return [
     {
       role: 'system',
       content: [
         '你是寰宇云医专业版报告的跨境就医匹配、费用和服务规划助手。',
-        '系统已有一份规则基线报告；你只输出用于增强费用、医院、国家对比、行程和服务的 JSON patch，不要输出完整报告。',
+        '请根据用户全部输入、上传资料解析结果和专业报告页面章节需求，直接返回费用、医院、国家对比、行程和服务 JSON 数据。',
+        '后端只做字段兼容、金额格式化、确定性求和和缺项重试，不会自行生成医学费用、医院或服务内容。',
+        '必须一次性返回 allowedPatchFields 中列出的全部顶层字段；不要只返回 costBreakdown 或单个章节，某节资料有限也要输出可展示的审慎区间、适配理由和资料前提。',
         '所有新增内容必须基于当前患者资料、上传资料摘要、病种方向、资料完整度和用户预算/保险/紧急度；资料不足是最后选项，能审慎判断时必须返回数据并标注需预审确认，不得编造医生姓名、可预约号源、真实床位或保险报销承诺。',
         '费用必须拆为三类：核心医疗费用、专属配套增值服务费用、外籍在华生活刚需费用；能基于资料给审慎区间时用人民币和美元同时表达，例如 ¥12,000-¥30,000（约$1,667-$4,167）；完全无法支撑时才写“资料不足，暂不估算/需医生确认”。',
+        '核心医疗费用不能只写检查、复核、会诊、MDT或评估；治疗型病例必须分别列出实际治疗执行费用，例如手术/麻醉住院、TACE/HAIC、消融、放疗、靶向/免疫药物、PCI支架或CABG搭桥。',
+        chronicOrScreeningCostNote,
+        treatmentCostExamples.length ? `本例 costBreakdown.medical 必须优先列出这些实际治疗执行费用并给可解析金额：${treatmentCostExamples.join('；')}。检查、会诊、MDT或方案评估不能替代这些治疗费用。` : '',
         '医院推荐必须解释为什么适配当前病情和资料状态；匹配度、等待时间或患者量能基于病种、地区、资料完整度和通用专科能力审慎判断时应尽量输出，不能精确时用区间/量级/需预审确认；完全无法支撑时才返回“暂不推荐具体医院”，matchScore 用 0 表示待评估。',
         '数据要有决策价值，不能过度保守或过度宽泛；费用区间要尽量收敛，医院 matchScore 要体现相对差异，等待时间/患者量能给量级就不要只写“需确认”。',
         '不要输出诊断结论、疗效承诺、治愈率或处方；医学判断只作为费用、医院和行程规划的依据。',
         '输出必须是严格 JSON，不要 Markdown，不要解释。',
-      ].join('\n'),
+      ].filter(Boolean).join('\n'),
     },
     {
       role: 'user',
       content: JSON.stringify({
-        task: '生成专业版报告费用医院行程服务 JSON patch',
+        task: '生成专业版报告费用医院行程服务 JSON',
         allowedPatchFields: [
           'costBreakdown',
           'countryComparison',
@@ -2610,13 +2846,13 @@ const buildPlanningPatchPrompt = (context: ProfessionalContext, ruleReport: Prof
         outputRequirements: {
           costBreakdown: {
             currencyNote: '说明中国医院通常按人民币收费，并给出 1 USD≈7.2 RMB 的参考折算；不能承诺固定价。',
-            medical: '第一类：核心医疗费用；至少4项，覆盖复核检查、病理/影像/分子检测、主要治疗/药物/住院等；能审慎估算时给有决策价值的区间，完全无法支撑时才写“暂不估算/需医生确认”。',
+            medical: `第一类：核心医疗费用；必须至少4项，每一项都要是可展示的 item/cost/note，覆盖复核检查、病理/影像/分子检测、实际治疗或管理执行费用、药物/住院/监测/随访等；治疗型病例的执行费用必须具体列为手术/消融/TACE/HAIC/放疗/药物/PCI/CABG等，慢病/体检类可列为并发症筛查、CGM/动态监测、用药调整、营养运动管理、专家解读和远程随访；不能只写“主要治疗”“方案评估”或“手术方案比选”。本例必须至少包含这些实际费用项中的1项并给可解析金额，能支撑时尽量分别列出：${treatmentCostExamples.join('；') || '由医疗模型根据当前病例判断具体执行费用'}。`,
             services: '第二类：专属配套增值服务费用；至少4项，覆盖病历整理翻译、专家预审、医院对接、陪诊、远程随访等；能按服务深度估算时给有决策价值的区间，完全无法支撑时才写“暂不估算/需医生确认”。',
             living: '第三类：外籍在华生活刚需费用；至少4项，覆盖机票/签证/住宿/餐饮交通/通讯保险备用金等；能按城市和停留天数估算时给有决策价值的区间，完全无法支撑时才写“暂不估算/需医生确认”。',
             grandTotal: '三类费用总区间，人民币 + 美元；仅在三类都无法支撑时写“资料不足，暂不估算”。',
             volatilityNote: '解释费用因治疗强度、药物品牌、住院天数、汇率、保险和城市而波动。',
           },
-          countryComparison: '至少包含中国和用户选择的主要地区；每项含 flag/country/cost/waitTime/strengths/limitations/fitScore/recommended。',
+          countryComparison: '至少包含中国和用户选择的主要地区；每项含 flag/country/cost/waitTime/strengths/limitations/fitScore/recommended。cost/waitTime/fitScore 要有可比较价值，fitScore 不能全部为0。',
           hospitalRecommendations: diseaseKey === 'dental'
             ? `只推荐${dentalPartner.name}，含 city/hospital/department/whyFit/preparation/matchScore；若资料不足，whyFit/preparation 明确需补充资料。`
             : '优先返回至少3家，含 city/hospital/department/whyFit/preparation/matchScore；必须贴合当前疾病、资料完整度和跨境就医可执行性。若缺少精确接诊条件，可给审慎匹配并在 preparation 写需补充资料；matchScore 要拉开相对差异。只有完全无法支撑医院匹配时，才返回1项“暂不推荐具体医院”，matchScore=0，并说明需补充资料。',
@@ -2636,11 +2872,13 @@ const buildPlanningPatchPrompt = (context: ProfessionalContext, ruleReport: Prof
             duration: disease.duration,
             treatment: disease.treatment,
           },
+          candidateHospitals,
           selectedRegions,
           dataCompleteness,
           missingMaterials,
           decisionQuestions,
           redFlags,
+          diseaseSpecificHints,
           dentalPartner: diseaseKey === 'dental' ? dentalPartner : undefined,
           dentalSimulationPlan: diseaseKey === 'dental' ? dentalSimulationPlan : undefined,
           structuredMedicalFacts: {
@@ -2663,18 +2901,26 @@ const buildPlanningPatchPrompt = (context: ProfessionalContext, ruleReport: Prof
             keywords: block.keywords.slice(0, 8),
           })).slice(0, 4),
         },
-        baselineRuleReport: {
-          costBreakdown: baseline.costBreakdown,
-          countryComparison: baseline.countryComparison,
-          hospitalRecommendations: baseline.hospitalRecommendations,
-          itinerary: baseline.itinerary,
-          servicePlan: baseline.servicePlan,
+        pageFieldReference: {
+          costBreakdownShape: 'costBreakdown.currencyNote + medical/services/living 三类费用 + grandTotal + volatilityNote',
+          countryComparisonShape: 'countryComparison[]: flag/country/cost/waitTime/strengths/limitations/fitScore/recommended',
+          hospitalRecommendationsShape: 'hospitalRecommendations[]: city/hospital/department/whyFit/preparation/matchScore',
+          itineraryShape: 'itinerary[]: dayRange/stage/tasks',
+          servicePlanShape: 'servicePlan[]: service/value',
         },
         qualityRules: [
-          '本 patch 不输出 executiveSummary、diagnosticConclusion、clinicalAssessment、treatmentPathway、prognosisComparison、technologyAdvantages、risksAndDisclaimers 或 nextSteps。',
-          '不得复制规则基线原文；需要按当前患者资料细化费用项、医院适配理由和行程任务。',
-          '费用项不能只写大类，必须写到可核对的明细层级，并说明波动原因；无法支撑精确金额时给审慎但有决策价值的区间和需确认条件，完全无法支撑时才用“暂不估算/需医生确认”。',
+          '必须返回 allowedPatchFields 中的全部字段：costBreakdown、countryComparison、hospitalRecommendations、itinerary、servicePlan、paymentAndInsurance，可选 qualityFlags；不得只输出费用拆分。',
+          '本次不输出 executiveSummary、diagnosticConclusion、clinicalAssessment、treatmentPathway、prognosisComparison、technologyAdvantages、risksAndDisclaimers 或 nextSteps。',
+          '需要按当前患者资料细化费用项、医院适配理由和行程任务，不能照搬通用模板。',
+          '费用项不能只写大类，必须写到可核对的明细层级，并说明波动原因；costBreakdown.medical/services/living 三类 items 都必须至少4项；无法支撑精确金额时给审慎但有决策价值的区间和需确认条件，完全无法支撑时才用“暂不估算/需医生确认”。',
+          treatmentCostExamples.length ? `核心医疗费用必须至少包含这些实际费用项中的1项并给可解析金额，能支撑时尽量分别列出：${treatmentCostExamples.join('；')}。不要合并成“主要治疗执行费用”，不要写成可行性评估。` : '',
+          diseaseKey === 'spine_surgery' ? '脊柱外科核心医疗费用必须至少4项，建议覆盖影像/神经功能复核、术前检查、椎间孔镜或微创椎间盘手术执行费、麻醉住院围术期、术后康复随访；不要把“手术方案比选”当成治疗执行费用。' : '',
+          chronicOrScreeningCostNote,
+          diseaseKey === 'lung_cancer' ? '肺癌病例中，核心医疗费用应覆盖 EGFR-TKI靶向药物首月/疗程费用、骨转移支持治疗费用，并按症状或承重骨风险写局部放疗/镇痛支持条件性费用；不要只写基因检测、影像、MDT或方案咨询。' : '',
+          diseaseKey === 'liver_cancer' ? '肝癌病例中，核心医疗费用应覆盖 TACE/HAIC介入、射频/微波消融、系统治疗药物首月或围手术期候选费用，并注明需按肝功能、门静脉侵犯和病灶位置确认；不要只写影像、AFP、肝功能和会诊。' : '',
           '医院推荐不能只写“专科强”，必须说明和当前病例资料/风险/治疗诉求的匹配点。',
+          '如果 matchedKnowledge.candidateHospitals 存在，可从中选择并结合当前用户资料改写为医院推荐；不要原样照抄，也不要在已有主诉和影像线索时轻易返回“暂不推荐具体医院”。',
+          '来华行程必须贴合病种：慢病/体检可以写筛查、监测、用药调整、专家解读、健康管理；心血管占位可以写MRI/超声复核、心内心外MDT、手术/介入风险评估和围术期准备。',
           '如资料缺口会影响费用、医院接收或行程，必须写入费用说明、preparation 或 qualityFlags。',
           diseaseKey === 'dental' ? `牙科不得推荐${['北大口腔', '上海九院', '中大口腔'].join('、')}等其他机构。` : '',
           `不得出现“${forbiddenFeeQualifier}”。`,
@@ -2718,12 +2964,125 @@ const extractJson = (content: string) => {
   return match ? match[0] : trimmed
 }
 
-const parseLlmJson = (content: string) => {
-  const jsonText = extractJson(content)
+const extractJsonObjects = (content: string) => {
+  const trimmed = content.trim()
+  const objects: string[] = []
+
+  for (let start = 0; start < trimmed.length; start += 1) {
+    if (trimmed[start] !== '{') continue
+
+    let depth = 0
+    let inString = false
+    let escaped = false
+
+    for (let index = start; index < trimmed.length; index += 1) {
+      const char = trimmed[index]
+      if (escaped) {
+        escaped = false
+        continue
+      }
+      if (char === '\\') {
+        escaped = true
+        continue
+      }
+      if (char === '"') {
+        inString = !inString
+        continue
+      }
+      if (inString) continue
+      if (char === '{') depth += 1
+      if (char === '}') {
+        depth -= 1
+        if (depth === 0) {
+          objects.push(trimmed.slice(start, index + 1))
+          start = index
+          break
+        }
+      }
+    }
+  }
+
+  return objects
+}
+
+const parseJsonText = (jsonText: string) => {
   try {
     return JSON.parse(jsonText) as unknown
   } catch {
     return JSON.parse(jsonrepair(jsonText)) as unknown
+  }
+}
+
+const getCostCategoryTitleText = (record: Record<string, unknown> | null) => {
+  if (!record) return ''
+  const value = record.title ?? record.name ?? record.category ?? record.type ?? record.group ?? record.section ?? record.key ?? record.label ?? record.类别 ?? record.分类 ?? record.分组
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
+}
+
+const isFlatCostCategoryRecord = (record: Record<string, unknown> | null) => {
+  if (!record) return false
+  const title = getCostCategoryTitleText(record)
+  if (!/核心|医疗|治疗|检查|手术|药物|配套|服务|翻译|陪诊|协调|预约|生活|住宿|交通|餐饮|签证|机票|出行/.test(title)) {
+    return false
+  }
+  const rawItems = record.items ||
+    record.details ||
+    record.breakdown ||
+    record.rows ||
+    record.list ||
+    record.costItems ||
+    record.cost_items ||
+    record.费用项 ||
+    record.明细 ||
+    record.项目
+  const hasCategoryCostField = ['total', 'subtotal', 'sum', 'range', 'estimatedTotal', 'estimated_total', 'amount', 'cost', 'fee', 'price', '小计', '总计', '合计', '费用', '价格', '金额']
+    .some((key) => record[key] !== undefined)
+  const hasItemCostField = Array.isArray(rawItems) && rawItems.some((item) => {
+    if (typeof item === 'string') return /[￥¥$]\s*\d|\d+(?:\.\d+)?\s*(?:万|千)?\s*(?:元|人民币|RMB|CNY|USD|美元)/i.test(item)
+    const itemRecord = asRecordValue(item)
+    return Boolean(itemRecord && ['cost', 'fee', 'amount', 'price', 'range', 'estimatedCost', 'estimated_cost', '费用', '价格', '金额', '费用区间']
+      .some((key) => itemRecord[key] !== undefined))
+  })
+  return hasCategoryCostField || hasItemCostField
+}
+
+const mergeJsonObjects = (items: unknown[]) => (
+  items.reduce<Record<string, unknown>>((acc, item) => {
+    const record = asRecordValue(item)
+    if (!record) return acc
+    if (!isFlatCostCategoryRecord(record)) return { ...acc, ...record }
+    const categories = Array.isArray(acc.categories) ? acc.categories : []
+    return {
+      ...acc,
+      categories: [...categories, record],
+    }
+  }, {})
+)
+
+const parseLlmJson = (content: string) => {
+  const candidates = extractJsonObjects(content)
+  const parsedCandidates = candidates.flatMap((candidate) => {
+    try {
+      return [parseJsonText(candidate)]
+    } catch {
+      return []
+    }
+  })
+
+  if (parsedCandidates.length === 1) return parsedCandidates[0]
+  if (parsedCandidates.length > 1) {
+    const merged = mergeJsonObjects(parsedCandidates)
+    if (Object.keys(merged).length) return merged
+    return parsedCandidates[0]
+  }
+
+  const jsonText = extractJson(content)
+  try {
+    return parseJsonText(jsonText)
+  } catch (error) {
+    const greedyMatch = content.trim().match(/\{[\s\S]*\}/)
+    if (!greedyMatch) throw error
+    return parseJsonText(greedyMatch[0])
   }
 }
 
@@ -2733,7 +3092,7 @@ const callLlm = async (context: ProfessionalContext, ruleReport: ProfessionalRep
       messages: buildPrompt(context, ruleReport),
       temperature: 0.25,
       stream: false,
-      maxAttempts: 1,
+        maxAttempts: 2,
     })
     if (!content) return null
 
@@ -2762,6 +3121,15 @@ const validatePatchFields = (
     const schema = professionalReportSchema.shape[field]
     return !schema.safeParse(patch[field]).success
   })
+  if (process.env.DEBUG_REPORT_LLM === '1' && invalidFields.length) {
+    invalidFields.forEach((field) => {
+      const result = professionalReportSchema.shape[field].safeParse(patch[field])
+      console.warn(`[${label} invalid ${String(field)}] ${JSON.stringify({
+        issues: result.success ? [] : result.error.issues.slice(0, 6),
+        value: patch[field],
+      }).slice(0, 3000)}`)
+    })
+  }
   const validFields = presentFields.filter((field) => !invalidFields.includes(field))
   const missingFields = requiredFields.filter((field) => patch[field] === undefined)
 
@@ -2788,8 +3156,8 @@ const callLlmPatchStage = async (
         temperature: 0.2,
         stream: false,
         responseFormat: 'json_object',
-        maxAttempts: 1,
-        disableFallbackVariants: true,
+        maxTokens: label.includes('PLANNING') ? 14000 : 12000,
+        maxAttempts: 2,
       })
       if (!content) return null
 
@@ -2875,6 +3243,10 @@ const callLlmPatch = async (context: ProfessionalContext, ruleReport: Profession
 
 const nonEmptyArray = <T>(value: T[] | undefined) => (Array.isArray(value) && value.length ? value : undefined)
 
+const splitNaturalListText = (value: string) => (
+  value.split(/[；;\n]/).map((item) => cleanText(item)).filter(Boolean)
+)
+
 const summarizeRecordForList = (record: Record<string, unknown>) => {
   const label = [record.item, record.title, record.name, record.label, record.category, record.service]
     .find((field) => typeof field === 'string' && field.trim())
@@ -2893,7 +3265,7 @@ const summarizeRecordForList = (record: Record<string, unknown>) => {
 
 const normalizeStringArray = (value: unknown) => {
   if (typeof value === 'string' && value.trim()) {
-    return value.split(/[；;、\n]/).map((item) => cleanText(item)).filter(Boolean)
+    return splitNaturalListText(value)
   }
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const record = value as Record<string, unknown>
@@ -2924,8 +3296,8 @@ const normalizeStringArray = (value: unknown) => {
   }
   if (!Array.isArray(value)) return []
 
-  return value.map((item) => {
-    if (typeof item === 'string') return cleanText(item)
+  return value.flatMap((item) => {
+    if (typeof item === 'string') return splitNaturalListText(item)
     if (!item || typeof item !== 'object') return ''
 
     const record = item as Record<string, unknown>
@@ -2964,6 +3336,7 @@ const professionalPatchFieldKeys: Array<keyof ProfessionalReport> = [
   'treatmentPathway',
   'prognosisComparison',
   'technologyAdvantages',
+  'risksAndDisclaimers',
   'costBreakdown',
   'countryComparison',
   'hospitalRecommendations',
@@ -3008,6 +3381,17 @@ const useNormalizedArray = (value: unknown) => {
   return normalized.length ? normalized : value
 }
 
+const normalizeEvidenceBasisArray = (value: unknown) => {
+  const normalized = normalizeStringArray(value)
+  const source = normalized.length ? normalized : (typeof value === 'string' ? [cleanText(value)] : [])
+  const expanded = source.flatMap((item) => {
+    if (!/、/.test(item) || item.length > 80) return item
+    const parts = item.split('、').map((part) => cleanText(part)).filter(Boolean)
+    return parts.length >= 2 ? parts : item
+  })
+  return expanded.length ? expanded : value
+}
+
 const dropUndefinedPatchFields = (patch: ProfessionalReportPatch): ProfessionalReportPatch => (
   Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) as ProfessionalReportPatch
 )
@@ -3015,17 +3399,31 @@ const dropUndefinedPatchFields = (patch: ProfessionalReportPatch): ProfessionalR
 const normalizeDiagnosticConclusionPatch = (value: unknown) => {
   const record = asRecordValue(value)
   if (!record) return value
-  const indicatorItems = Array.isArray(record.indicatorInterpretations)
-    ? record.indicatorInterpretations.map((item) => {
+  const rawIndicatorInterpretations = pickUnknown(record, [
+    'indicatorInterpretations',
+    'indicator_interpretations',
+    'indicators',
+    'keyIndicators',
+    'key_indicators',
+    'findings',
+    'evidenceItems',
+    'evidence_items',
+    '影像征象',
+    '指标解释',
+    '关键指标',
+    '关键发现解释',
+  ])
+  const indicatorItems = Array.isArray(rawIndicatorInterpretations)
+    ? rawIndicatorInterpretations.map((item) => {
       const itemRecord = asRecordValue(item)
       if (!itemRecord && typeof item === 'string') {
         return { indicator: item, value: '见资料', interpretation: item }
       }
       if (!itemRecord) return null
       return {
-        indicator: pickString(itemRecord, ['indicator', 'name', 'metric', 'item']),
-        value: pickString(itemRecord, ['value', 'result', 'level', 'finding']),
-        interpretation: pickString(itemRecord, ['interpretation', 'meaning', 'note', 'description', 'explanation']),
+        indicator: pickString(itemRecord, ['indicator', 'name', 'metric', 'item', 'finding', 'sign', 'symptom', '指标', '项目', '发现', '征象']),
+        value: pickString(itemRecord, ['value', 'result', 'level', 'finding', 'evidence', 'summary', '表现', '结果', '证据']),
+        interpretation: pickString(itemRecord, ['interpretation', 'meaning', 'note', 'description', 'explanation', 'clinicalMeaning', 'clinical_meaning', '解读', '意义', '说明']),
       }
     }).filter((item): item is ProfessionalReport['diagnosticConclusion']['indicatorInterpretations'][number] => Boolean(item?.indicator && item.value && item.interpretation))
     : undefined
@@ -3035,7 +3433,7 @@ const normalizeDiagnosticConclusionPatch = (value: unknown) => {
     finalImpression: pickString(record, ['finalImpression', 'impression', 'conclusion', 'diagnosis', 'summary'], pickString(record, ['final_impression'])),
     severityInterpretation: pickString(record, ['severityInterpretation', 'severity', 'riskLevel', 'risk', 'severity_interpretation']),
     indicatorInterpretations: indicatorItems || record.indicatorInterpretations,
-    evidenceBasis: useNormalizedArray(record.evidenceBasis || record.evidence || record.basis || record.evidence_basis),
+    evidenceBasis: normalizeEvidenceBasisArray(record.evidenceBasis || record.evidence || record.basis || record.evidence_basis),
   }
 }
 
@@ -3095,36 +3493,58 @@ const normalizePrognosisComparisonPatch = (value: unknown) => {
     return {
       positioning: text,
       metrics: [
-        { metric: '预后判断', currentRisk: text, chinaReference: '需医生预审确认', note: text },
-        { metric: '管理价值', currentRisk: text, chinaReference: '通过MDT和系统治疗管理风险', note: text },
+        { metric: '治疗窗口判断', currentRisk: text, chinaReference: '中国医院预审可围绕该线索做专科复核和路径排序。', note: '需医生结合原始资料确认，不代表疗效承诺。' },
+        { metric: '管理价值判断', currentRisk: text, chinaReference: '通过MDT、专科评估和随访安排降低跨境就医决策不确定性。', note: '用于管理价值表达，不代表疗效承诺。' },
       ],
       conclusion: text,
     }
   }
+  if (Array.isArray(value)) {
+    return normalizePrognosisComparisonPatch({
+      positioning: '医疗模型返回了预后和管理价值对比明细，本节仅用于治疗窗口、风险管理和来华预审价值判断。',
+      metrics: value,
+      conclusion: '具体预后仍需医生结合原始影像、检查和治疗记录确认。',
+    })
+  }
   const record = asRecordValue(value)
   if (!record) return value
-  const rawMetrics = pickUnknown(record, ['metrics', 'items', 'comparisons', 'rows'])
-  const metrics = Array.isArray(rawMetrics)
-    ? rawMetrics.map((item) => {
+  const rawMetrics = pickUnknown(record, ['metrics', 'items', 'comparisons', 'comparisonItems', 'valueItems', 'valueComparison', 'managementValues', 'rows', 'dimensions', '指标', '对比项', '管理价值'])
+  const metricSource = Array.isArray(rawMetrics)
+    ? rawMetrics
+    : asRecordValue(rawMetrics)
+      ? Object.values(rawMetrics as Record<string, unknown>)
+      : []
+  const metrics = metricSource.length
+    ? metricSource.map((item) => {
       const itemRecord = asRecordValue(item)
       if (!itemRecord && typeof item === 'string') {
-        return { metric: item, currentRisk: item, chinaReference: '需结合医生预审确认', note: item }
+        const text = cleanText(item)
+        return {
+          metric: text.slice(0, 18) || '管理价值',
+          currentRisk: text,
+          chinaReference: '中国医院预审可据此复核治疗窗口和风险管理重点。',
+          note: '需医生结合原始资料确认，不代表疗效承诺。',
+        }
       }
       if (!itemRecord) return null
+      const metric = pickString(itemRecord, ['metric', 'indicator', 'item', 'name', 'title', 'dimension', 'label', 'factor', 'category', 'managementDimension', 'valueDimension', '指标', '项目', '维度', '管理维度', '价值维度'])
+      const currentRisk = pickString(itemRecord, ['currentRisk', 'current', 'risk', 'current_risk', 'currentSituation', 'patientRisk', 'baselineRisk', 'currentStatus', 'currentLimitation', 'challenge', '现状风险', '当前风险', '当前情况', '当前问题', '现状'])
+      const chinaReference = pickString(itemRecord, ['chinaReference', 'china', 'reference', 'china_reference', 'chinaValue', 'chinaPlan', 'managementValue', 'chinaAdvantage', 'chinaManagement', 'chinaPathway', 'opportunity', 'value', 'recommendedManagement', '中国参考', '中国方案', '管理价值', '来华价值', '中国处理', '中国MDT价值', '参考路径'])
+      const note = pickString(itemRecord, ['note', 'description', 'explanation', 'basis', 'condition', 'remark', 'rationale', 'recommendation', 'action', 'nextStep', '说明', '依据', '备注', '前提', '建议', '下一步'])
       return {
-        metric: pickString(itemRecord, ['metric', 'indicator', 'item', 'name']),
-        currentRisk: pickString(itemRecord, ['currentRisk', 'current', 'risk', 'current_risk']),
-        chinaReference: pickString(itemRecord, ['chinaReference', 'china', 'reference', 'china_reference']),
-        note: pickString(itemRecord, ['note', 'description', 'explanation']),
+        metric,
+        currentRisk,
+        chinaReference,
+        note: note || (metric ? `围绕${metric}维度做管理价值判断，具体适用前提需由医生结合资料确认。` : ''),
       }
     }).filter((item): item is ProfessionalReport['prognosisComparison']['metrics'][number] => Boolean(item?.metric && item.currentRisk && item.chinaReference && item.note))
     : undefined
 
   return {
     ...record,
-    positioning: pickString(record, ['positioning', 'summary', 'context', 'position']),
+    positioning: pickString(record, ['positioning', 'summary', 'context', 'position', 'overview', 'scope', '定位', '概述']),
     metrics: metrics || record.metrics,
-    conclusion: pickString(record, ['conclusion', 'summaryConclusion', 'finalConclusion']),
+    conclusion: pickString(record, ['conclusion', 'summaryConclusion', 'finalConclusion', 'recommendation', 'actionConclusion', '建议结论', '结论', '综合结论']),
   }
 }
 
@@ -3150,15 +3570,17 @@ const normalizeProfessionalCostItem = (value: unknown) => {
     return { item: value, cost: /[￥¥$]|\d/.test(value) ? value : '需医生确认', note: value }
   }
   if (!record) return null
-  const directCost = pickString(record, ['cost', 'fee', 'amount', 'price', 'range', 'estimatedCost', 'estimated_cost', '费用', '价格', '金额'])
+  const valueText = pickString(record, ['value', '费用说明', '说明'])
+  const valueLooksLikeCost = /[￥¥$]\s*\d|\d+(?:\.\d+)?\s*(?:万|千)?\s*(?:元|人民币|RMB|CNY|USD|美元)/i.test(valueText)
+  const directCost = pickString(record, ['cost', 'fee', 'amount', 'price', 'range', 'costRange', 'cost_range', 'estimatedCost', 'estimated_cost', '费用', '价格', '金额', '费用区间'])
   const cnyCost = pickString(record, ['rmb', 'cny', 'rmbCost', 'cnyCost', 'RMB', 'CNY', '人民币'])
   const usdCost = pickString(record, ['usd', 'usdCost', 'USD', '美元'])
-  const cost = directCost || [cnyCost, usdCost].filter(Boolean).join(' / ')
-  const item = pickString(record, ['item', 'name', 'project', 'category', 'title', 'service'])
+  const cost = directCost || [cnyCost, usdCost].filter(Boolean).join(' / ') || (valueLooksLikeCost ? valueText : '')
+  const item = pickString(record, ['item', 'name', 'project', 'category', 'title', 'service', 'phase', 'stage', 'treatment', 'therapy', 'procedure', '服务', '项目', '阶段', '治疗项目'])
   return {
     item,
     cost: cost || pickString(record, ['total', 'subtotal', '总计', '小计']),
-    note: pickString(record, ['note', 'description', 'basis', 'remark', 'explanation', '说明', '备注'], item),
+    note: pickString(record, ['note', 'notes', 'description', 'basis', 'remark', 'explanation', '说明', '备注'], valueLooksLikeCost ? item : valueText || item),
   }
 }
 
@@ -3166,46 +3588,70 @@ const normalizeProfessionalCostGroup = (value: unknown, title: string) => {
   const record = asRecordValue(value)
   const rawItems = Array.isArray(value)
     ? value
-    : pickUnknown(record, ['items', 'details', 'breakdown', 'rows', 'list'])
+    : pickUnknown(record, ['items', 'details', 'breakdown', 'rows', 'list', 'lineItems', 'line_items', 'costItems', 'cost_items', '费用项', '明细', '项目', '清单'])
   const items = Array.isArray(rawItems)
     ? rawItems.map(normalizeProfessionalCostItem)
       .filter((item): item is ProfessionalReport['costBreakdown']['medical']['items'][number] => Boolean(item?.item && item.cost && item.note))
     : []
   if (!record && !items.length) return null
   const itemTotal = sumRanges(items.map((item) => parseUsdRange(item.cost)))
-  const total = pickString(record, ['total', 'subtotal', 'sum', 'range', 'estimatedTotal', 'estimated_total', '总计', '小计']) ||
-    formatCnyFirstRange(itemTotal, '')
+  const total = formatCnyFirstRange(itemTotal, '') ||
+    pickString(record, ['total', 'subtotal', 'sum', 'range', 'estimatedTotal', 'estimated_total', '总计', '小计'])
   return {
-    title: pickString(record, ['title', 'name', 'category'], title),
+    title: pickString(record, ['title', 'name', 'category', 'type', 'group', 'section', 'key', 'label', '类别', '分类'], title),
     total,
     items,
   }
 }
 
 const normalizeProfessionalCostBreakdownPatch = (value: unknown) => {
-  const categoryList = Array.isArray(value) ? value : null
   const record = asRecordValue(value)
+  const embeddedCategoryList = pickUnknown(record, [
+    'categories',
+    'costCategories',
+    'cost_categories',
+    'groups',
+    'sections',
+    '费用类别',
+    '费用分类',
+    '费用分组',
+  ])
+  const categoryList = Array.isArray(value)
+    ? value
+    : Array.isArray(embeddedCategoryList)
+      ? embeddedCategoryList
+      : null
   if (!record && !categoryList) return value
   const findCategory = (patterns: RegExp[], aliases: string[]) => {
     if (categoryList) {
-      return categoryList.find((item) => {
+      const matched = categoryList.find((item) => {
         const itemRecord = asRecordValue(item)
-        const title = pickString(itemRecord, ['title', 'name', 'category', '类别', '分类'])
+        const title = pickString(itemRecord, ['title', 'name', 'category', 'type', 'group', 'section', 'key', 'label', '类别', '分类', '分组'])
         return patterns.some((pattern) => pattern.test(title))
       })
+      if (matched) return matched
     }
-    return pickUnknown(record, aliases)
+    const direct = pickUnknown(record, aliases)
+    if (direct) return direct
+    if (!record) return undefined
+    const recordTitle = pickString(record, ['title', 'name', 'category', 'type', 'group', 'section', 'key', 'label', '类别', '分类', '分组'])
+    if (patterns.some((pattern) => pattern.test(recordTitle))) return record
+    const matchedEntry = Object.entries(record).find(([key]) => patterns.some((pattern) => pattern.test(key)))
+    return matchedEntry?.[1]
   }
+  const rawMedical = findCategory([/核心|医疗|治疗|检查|手术|药物/], ['medical', 'coreMedical', 'core_medical', 'coreMedicalCosts', 'medicalCosts', 'clinicalCosts', 'treatmentCosts', 'treatment', 'therapyCosts', 'procedureCosts', '核心医疗', '核心医疗费用', '医疗费用', '治疗费用', '临床费用'])
+  const rawServices = findCategory([/配套|服务|增值|翻译|陪诊|协调|预约/], ['services', 'supportServices', 'support_services', 'serviceCosts', 'supportCosts', 'valueAddedServices', 'coordinationCosts', 'translationCosts', 'assistantServices', '配套服务', '配套服务费用', '增值服务费用', '服务费用', '协调服务', '翻译陪诊'])
+  const rawLiving = findCategory([/生活|住宿|交通|餐饮|签证|机票|出行/], ['living', 'livingCosts', 'living_costs', 'livingExpenses', 'lifeCosts', 'travelCosts', 'accommodationCosts', 'stayCosts', 'dailyCosts', '生活费用', '在华生活费用', '生活开销', '出行生活'])
   const medical = normalizeProfessionalCostGroup(
-    findCategory([/核心|医疗/], ['medical', 'coreMedical', 'core_medical', 'coreMedicalCosts', 'medicalCosts', '核心医疗', '核心医疗费用', '医疗费用']),
+    rawMedical,
     '核心医疗费用',
   )
   const services = normalizeProfessionalCostGroup(
-    findCategory([/配套|服务|增值/], ['services', 'supportServices', 'support_services', 'serviceCosts', 'valueAddedServices', '配套服务', '配套服务费用', '增值服务费用']),
+    rawServices,
     '配套服务费用',
   )
   const living = normalizeProfessionalCostGroup(
-    findCategory([/生活|住宿|交通/], ['living', 'livingCosts', 'living_costs', 'livingExpenses', 'lifeCosts', '生活费用', '在华生活费用']),
+    rawLiving,
     '生活费用',
   )
   const grandTotalFromGroups = sumRanges([medical?.total, services?.total, living?.total].map((cost) => parseUsdRange(cost || '')))
@@ -3213,47 +3659,270 @@ const normalizeProfessionalCostBreakdownPatch = (value: unknown) => {
   return {
     ...(record || {}),
     currencyNote: pickString(record, ['currencyNote', 'currency', 'currency_note', 'note', '币种说明']),
-    medical: medical || record?.medical,
-    services: services || record?.services,
-    living: living || record?.living,
+    medical: medical || (Array.isArray(record?.medical) ? undefined : record?.medical),
+    services: services || (Array.isArray(record?.services) ? undefined : record?.services),
+    living: living || (Array.isArray(record?.living) ? undefined : record?.living),
     grandTotal: computedGrandTotal || pickString(record, ['grandTotal', 'total', 'overallTotal', 'grand_total', '总费用', '总计']),
     volatilityNote: pickString(record, ['volatilityNote', 'volatility', 'riskNote', 'note', 'volatility_note', '波动说明', '风险说明']),
   }
+}
+
+const normalizeCountryComparisonPatch = (value: unknown) => {
+  const source = Array.isArray(value)
+    ? value
+    : asRecordValue(value)
+      ? pickUnknown(asRecordValue(value), ['items', 'countries', 'regions', 'comparison', 'list', '国家对比', '地区对比'])
+      : undefined
+  if (!Array.isArray(source)) return value
+  return source.map((item) => {
+    const record = asRecordValue(item)
+    if (!record && typeof item === 'string') {
+      return { flag: '🌐', country: item, cost: '需预审确认', waitTime: '需预审确认', strengths: item, limitations: '需医生预审后确认', fitScore: 50 }
+    }
+    if (!record) return null
+    const country = pickString(record, ['country', 'name', 'region', 'destination', '国家', '地区'])
+    const scoreValue = pickUnknown(record, ['fitScore', 'score', 'matchScore', 'matchingScore', 'fit_score', '匹配度'])
+    const score = typeof scoreValue === 'number'
+      ? scoreValue
+      : Number.parseInt(String(scoreValue || ''), 10)
+    return {
+      flag: pickString(record, ['flag', 'emoji', 'icon', '国旗']) || (isChinaRegionLabel(country) ? '🇨🇳' : '🌐'),
+      country,
+      cost: pickString(record, ['cost', 'fee', 'price', 'medicalCost', 'expense', '费用', '价格']) || '需预审确认',
+      waitTime: pickString(record, ['waitTime', 'wait', 'waitingTime', 'timeline', '等待时间', '排期']) || '需预审确认',
+      strengths: pickString(record, ['strengths', 'advantages', 'pros', 'value', '优势', '亮点']) || '需结合当前资料预审确认。',
+      limitations: pickString(record, ['limitations', 'risks', 'cons', 'constraints', '限制', '不足']) || '需结合当地费用、等待时间和治疗路径确认。',
+      fitScore: Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : (isChinaRegionLabel(country) ? 80 : 65),
+      recommended: typeof record.recommended === 'boolean'
+        ? record.recommended
+        : typeof record.isRecommended === 'boolean'
+          ? record.isRecommended
+          : isChinaRegionLabel(country) || undefined,
+    }
+  }).filter((item): item is ProfessionalReport['countryComparison'][number] => Boolean(item?.country && item.cost && item.waitTime && item.strengths && item.limitations))
+}
+
+const normalizeHospitalRecommendationsPatch = (value: unknown) => {
+  const source = Array.isArray(value)
+    ? value
+    : asRecordValue(value)
+      ? pickUnknown(asRecordValue(value), ['items', 'hospitals', 'recommendations', 'list', '医院推荐', '推荐医院'])
+      : undefined
+  if (!Array.isArray(source)) return value
+  return source.map((item) => {
+    const record = asRecordValue(item)
+    if (!record && typeof item === 'string') {
+      return {
+        city: '需预审确认',
+        hospital: item,
+        department: '需预审确认',
+        whyFit: item,
+        preparation: '需补充资料后确认接收条件。',
+        matchScore: 50,
+      }
+    }
+    if (!record) return null
+    const scoreValue = pickUnknown(record, ['matchScore', 'score', 'fitScore', 'matchingScore', 'match_score', '匹配度'])
+    const score = typeof scoreValue === 'number'
+      ? scoreValue
+      : Number.parseInt(String(scoreValue || ''), 10)
+    return {
+      city: pickString(record, ['city', 'location', 'region', 'area', '城市', '地区', '所在地']),
+      hospital: pickString(record, ['hospital', 'name', 'institution', 'provider', '医院', '机构']),
+      department: pickString(record, ['department', 'dept', 'specialty', 'serviceLine', '科室', '专科', '中心']),
+      whyFit: pickString(record, ['whyFit', 'reason', 'fitReason', 'strengths', 'why', 'value', 'advantage', '匹配理由', '推荐理由', '优势']),
+      preparation: pickString(record, ['preparation', 'requirements', 'materials', 'nextStep', 'nextSteps', 'documentRequirements', '准备事项', '资料准备', '接诊准备']),
+      matchScore: Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 0,
+    }
+  }).filter((item): item is ProfessionalReport['hospitalRecommendations'][number] => Boolean(item?.city && item.hospital && item.department && item.whyFit && item.preparation))
+}
+
+const normalizeItineraryPatch = (value: unknown) => {
+  const source = Array.isArray(value)
+    ? value
+    : asRecordValue(value)
+      ? pickUnknown(asRecordValue(value), ['items', 'stages', 'steps', 'timeline', 'itinerary', 'list', '行程'])
+      : undefined
+  if (!Array.isArray(source)) return value
+  return source.map((item, index) => {
+    const record = asRecordValue(item)
+    if (!record && typeof item === 'string') {
+      return { dayRange: `阶段${index + 1}`, stage: item, tasks: [item] }
+    }
+    if (!record) return null
+    const stage = pickString(record, ['stage', 'phase', 'title', 'name', '阶段']) || `阶段${index + 1}`
+    const taskItems = normalizeStringArray(record.tasks || record.actions || record.items || record.toDo || record.description || record.summary)
+    return {
+      dayRange: pickString(record, ['dayRange', 'days', 'time', 'timeline', 'period', '日期', '时间']) || `阶段${index + 1}`,
+      stage,
+      tasks: taskItems.length ? taskItems : [stage],
+    }
+  }).filter((item): item is ProfessionalReport['itinerary'][number] => Boolean(item?.dayRange && item.stage && item.tasks.length))
+}
+
+const normalizeServicePlanPatch = (value: unknown) => {
+  const source = Array.isArray(value)
+    ? value
+    : asRecordValue(value)
+      ? pickUnknown(asRecordValue(value), [
+        'items',
+        'services',
+        'plans',
+        'list',
+        'serviceItems',
+        'service_items',
+        'packageItems',
+        'package_items',
+        'serviceDetails',
+        'service_details',
+        'professionalServicePackage',
+        'professional_service_package',
+        '服务计划',
+        '服务包',
+        '服务项目',
+        '专业服务包',
+        '增值服务',
+      ])
+      : undefined
+  if (!Array.isArray(source)) return value
+  return source.map((item) => {
+    const record = asRecordValue(item)
+    if (!record && typeof item === 'string') {
+      return { service: item, value: item }
+    }
+    if (!record) return null
+    return {
+      service: pickString(record, ['service', 'name', 'title', 'item', 'packageItem', 'serviceName', 'service_name', '服务', '项目', '服务名称']),
+      value: pickString(record, ['value', 'description', 'detail', 'note', 'benefit', 'scope', 'deliverable', 'support', '说明', '价值', '内容', '交付']),
+    }
+  }).filter((item): item is ProfessionalReport['servicePlan'][number] => Boolean(item?.service && item.value))
 }
 
 const normalizeProfessionalPatch = (patch: ProfessionalReportPatch): ProfessionalReportPatch => {
   const source = unwrapProfessionalPatch(patch)
   return dropUndefinedPatchFields({
     ...source,
-    executiveSummary: source.executiveSummary === undefined ? undefined : useNormalizedArray(source.executiveSummary),
-    diagnosticConclusion: source.diagnosticConclusion === undefined ? undefined : normalizeDiagnosticConclusionPatch(source.diagnosticConclusion),
-    clinicalAssessment: source.clinicalAssessment === undefined ? undefined : normalizeClinicalAssessmentPatch(source.clinicalAssessment),
-    treatmentPathway: source.treatmentPathway === undefined ? undefined : normalizeTreatmentPathwayPatch(source.treatmentPathway),
-    prognosisComparison: source.prognosisComparison === undefined ? undefined : normalizePrognosisComparisonPatch(source.prognosisComparison),
-    technologyAdvantages: source.technologyAdvantages === undefined ? undefined : normalizeTechnologyAdvantagesPatch(source.technologyAdvantages),
-    costBreakdown: source.costBreakdown === undefined ? undefined : normalizeProfessionalCostBreakdownPatch(source.costBreakdown),
-    paymentAndInsurance: source.paymentAndInsurance === undefined ? undefined : useNormalizedArray(source.paymentAndInsurance),
-    risksAndDisclaimers: source.risksAndDisclaimers === undefined ? undefined : useNormalizedArray(source.risksAndDisclaimers),
-    nextSteps: source.nextSteps === undefined ? undefined : useNormalizedArray(source.nextSteps),
-    qualityFlags: source.qualityFlags === undefined ? undefined : normalizeStringArray(source.qualityFlags),
+    executiveSummary: pickUnknown(source, ['executiveSummary', 'summary', 'coreSummary', '核心摘要']) === undefined ? undefined : useNormalizedArray(pickUnknown(source, ['executiveSummary', 'summary', 'coreSummary', '核心摘要'])),
+    diagnosticConclusion: pickUnknown(source, ['diagnosticConclusion', 'diagnosisConclusion', 'diagnosis', '诊断解读', '诊断结论']) === undefined ? undefined : normalizeDiagnosticConclusionPatch(pickUnknown(source, ['diagnosticConclusion', 'diagnosisConclusion', 'diagnosis', '诊断解读', '诊断结论'])),
+    clinicalAssessment: pickUnknown(source, ['clinicalAssessment', 'assessment', 'conditionAssessment', '病情评估']) === undefined ? undefined : normalizeClinicalAssessmentPatch(pickUnknown(source, ['clinicalAssessment', 'assessment', 'conditionAssessment', '病情评估'])),
+    treatmentPathway: pickUnknown(source, ['treatmentPathway', 'treatmentPlan', 'pathway', '治疗路径', '治疗方案']) === undefined ? undefined : normalizeTreatmentPathwayPatch(pickUnknown(source, ['treatmentPathway', 'treatmentPlan', 'pathway', '治疗路径', '治疗方案'])),
+    prognosisComparison: pickUnknown(source, ['prognosisComparison', 'prognosis', 'valueComparison', '预后对比', '管理价值对比']) === undefined ? undefined : normalizePrognosisComparisonPatch(pickUnknown(source, ['prognosisComparison', 'prognosis', 'valueComparison', '预后对比', '管理价值对比'])),
+    technologyAdvantages: pickUnknown(source, ['technologyAdvantages', 'advancedTechnologies', 'advancedCare', 'technology', '技术优势', '前沿技术优势']) === undefined ? undefined : normalizeTechnologyAdvantagesPatch(pickUnknown(source, ['technologyAdvantages', 'advancedTechnologies', 'advancedCare', 'technology', '技术优势', '前沿技术优势'])),
+    costBreakdown: pickUnknown(source, ['costBreakdown', 'costs', 'fees', '费用拆分', '费用明细']) === undefined ? undefined : normalizeProfessionalCostBreakdownPatch(pickUnknown(source, ['costBreakdown', 'costs', 'fees', '费用拆分', '费用明细'])),
+    countryComparison: pickUnknown(source, ['countryComparison', 'regionComparison', 'countries', '国家对比', '地区对比']) === undefined ? undefined : normalizeCountryComparisonPatch(pickUnknown(source, ['countryComparison', 'regionComparison', 'countries', '国家对比', '地区对比'])),
+    hospitalRecommendations: pickUnknown(source, ['hospitalRecommendations', 'hospitals', 'recommendedHospitals', 'hospitalRanking', '医院推荐', '推荐医院']) === undefined ? undefined : normalizeHospitalRecommendationsPatch(pickUnknown(source, ['hospitalRecommendations', 'hospitals', 'recommendedHospitals', 'hospitalRanking', '医院推荐', '推荐医院'])),
+    itinerary: pickUnknown(source, ['itinerary', 'timeline', 'travelPlan', '来华行程', '行程规划']) === undefined ? undefined : normalizeItineraryPatch(pickUnknown(source, ['itinerary', 'timeline', 'travelPlan', '来华行程', '行程规划'])),
+    servicePlan: pickUnknown(source, ['servicePlan', 'services', 'servicePackage', '服务计划', '服务包']) === undefined ? undefined : normalizeServicePlanPatch(pickUnknown(source, ['servicePlan', 'services', 'servicePackage', '服务计划', '服务包'])),
+    paymentAndInsurance: pickUnknown(source, ['paymentAndInsurance', 'payment', 'insurance', '支付保险', '支付与保险']) === undefined ? undefined : useNormalizedArray(pickUnknown(source, ['paymentAndInsurance', 'payment', 'insurance', '支付保险', '支付与保险'])),
+    risksAndDisclaimers: pickUnknown(source, ['risksAndDisclaimers', 'risks', 'disclaimers', '风险提示', '风险免责声明']) === undefined ? undefined : useNormalizedArray(pickUnknown(source, ['risksAndDisclaimers', 'risks', 'disclaimers', '风险提示', '风险免责声明'])),
+    nextSteps: pickUnknown(source, ['nextSteps', 'actions', 'actionPlan', '下一步', '下一步行动']) === undefined ? undefined : useNormalizedArray(pickUnknown(source, ['nextSteps', 'actions', 'actionPlan', '下一步', '下一步行动'])),
+    qualityFlags: pickUnknown(source, ['qualityFlags', 'flags', 'warnings', '质量提示']) === undefined ? undefined : normalizeStringArray(pickUnknown(source, ['qualityFlags', 'flags', 'warnings', '质量提示'])),
   })
 }
 
-type ProfessionalRecoveryField = 'treatmentPathway' | 'prognosisComparison' | 'costBreakdown'
+type ProfessionalRecoveryField =
+  | 'executiveSummary'
+  | 'diagnosticConclusion'
+  | 'clinicalAssessment'
+  | 'treatmentPathway'
+  | 'prognosisComparison'
+  | 'technologyAdvantages'
+  | 'costBreakdown'
+  | 'countryComparison'
+  | 'hospitalRecommendations'
+  | 'itinerary'
+  | 'servicePlan'
+  | 'paymentAndInsurance'
+  | 'risksAndDisclaimers'
+  | 'nextSteps'
 
 const professionalRecoveryFields: ProfessionalRecoveryField[] = [
+  'executiveSummary',
+  'diagnosticConclusion',
+  'clinicalAssessment',
   'treatmentPathway',
   'prognosisComparison',
+  'technologyAdvantages',
   'costBreakdown',
+  'countryComparison',
+  'hospitalRecommendations',
+  'itinerary',
+  'servicePlan',
+  'paymentAndInsurance',
+  'risksAndDisclaimers',
+  'nextSteps',
 ]
 
+const professionalClinicalRecoveryFields: ProfessionalRecoveryField[] = [
+  'executiveSummary',
+  'diagnosticConclusion',
+  'clinicalAssessment',
+  'treatmentPathway',
+  'technologyAdvantages',
+  'risksAndDisclaimers',
+  'nextSteps',
+]
+
+const professionalPlanningRecoveryFields: ProfessionalRecoveryField[] = [
+  'costBreakdown',
+  'countryComparison',
+  'hospitalRecommendations',
+  'itinerary',
+  'servicePlan',
+  'paymentAndInsurance',
+]
+
+const professionalSingleFieldRecoveryFields = new Set<ProfessionalRecoveryField>([
+  'diagnosticConclusion',
+  'clinicalAssessment',
+  'treatmentPathway',
+  'prognosisComparison',
+  'technologyAdvantages',
+  'costBreakdown',
+  'countryComparison',
+  'hospitalRecommendations',
+  'itinerary',
+  'servicePlan',
+  'paymentAndInsurance',
+])
+
 const professionalRecoveryFieldLabels: Record<ProfessionalRecoveryField, string> = {
+  executiveSummary: '核心摘要',
+  diagnosticConclusion: '诊断解读',
+  clinicalAssessment: '病情评估',
   treatmentPathway: '治疗路径',
   prognosisComparison: '预后和管理价值对比',
+  technologyAdvantages: '前沿技术优势',
   costBreakdown: '费用拆分',
+  countryComparison: '国家对比',
+  hospitalRecommendations: '医院推荐',
+  itinerary: '来华行程',
+  servicePlan: '服务包',
+  paymentAndInsurance: '支付与保险',
+  risksAndDisclaimers: '风险提示',
+  nextSteps: '下一步行动',
 }
 
+const isProfessionalRecoveryField = (field: keyof ProfessionalReport): field is ProfessionalRecoveryField => (
+  professionalRecoveryFields.includes(field as ProfessionalRecoveryField)
+)
+
 const professionalRecoveryOutputRequirements: Record<ProfessionalRecoveryField, unknown> = {
+  executiveSummary: '3-5条自然中文摘要；必须回应当前患者的主诉/诊断方向、资料依据、来华价值、治疗目标和资料缺口；不要写字段类型说明或通用模板。',
+  diagnosticConclusion: {
+    finalImpression: '基于用户表单和上传资料写当前诊断/工作方向；资料不足时说明需确认的证据，不要编造分期或检查结果。',
+    severityInterpretation: '说明病情严重程度、短期风险或治疗窗口；不得承诺疗效或治愈。',
+    indicatorInterpretations: '1-4项；每项含 indicator/value/interpretation，优先使用上传资料中的病理、影像、基因、心功能、口腔影像等关键指标。',
+    evidenceBasis: '至少2条；列出来自表单或上传资料的证据依据，以及仍需原件/医生复核的点。',
+  },
+  clinicalAssessment: {
+    workingDiagnosis: '当前工作诊断或主责专科方向，需贴合患者资料。',
+    severity: '用自然中文说明风险层级/紧急程度/资料限制。',
+    keyFindings: '至少2条，写当前资料支持的关键发现或临床线索。',
+    redFlags: '如有急症/进展风险则列出；无明确急症时说明仍需医生确认。',
+    missingMaterials: '至少1条，列出会影响医院接收、费用或治疗方案的缺失资料。',
+    decisionQuestions: '至少2条，写医生预审需要回答的关键问题。',
+  },
   treatmentPathway: {
     goal: '写成完整中文句子，围绕当前患者资料、就医意图、治疗时间窗口和疾病方向给出总目标，不要照抄字段说明',
     phases: '至少3个阶段；每个阶段必须有 phase/timeline/actions/output；先资料复核，再方案确认，再治疗/随访执行；actions 至少1条；不要照抄字段说明',
@@ -3263,14 +3932,265 @@ const professionalRecoveryOutputRequirements: Record<ProfessionalRecoveryField, 
     metrics: '至少2项；每项含 metric/currentRisk/chinaReference/note；可用区间、量级或“需医生预审确认”的审慎表达，但不要全部写暂不比较；不要照抄字段说明',
     conclusion: '写成面向患者的中文结论：总结为什么该病例值得或不值得进入中国医院预审，不能承诺治愈或生存获益；不要出现“string”等字段类型文字',
   },
+  technologyAdvantages: '至少3项；每项含 technology/value/applicability。必须是和当前病种/资料相关的技术、药物、设备、MDT能力或服务能力；如需基因/病理/影像确认，要写在 applicability；不要只写“前沿疗法匹配/暂不生成”。',
   costBreakdown: {
     currencyNote: '写成完整中文句子，说明中国医院通常按人民币收费，1 USD≈7.2 RMB 为参考折算；不要照抄字段说明',
-    medical: '核心医疗费用；至少4项，覆盖预审/病理影像复核、补充检查、主要治疗/药物/住院/放疗或骨保护等病例相关项目；每项 item/cost/note',
+    medical: '核心医疗费用；至少4项，覆盖预审/病理影像复核、补充检查、实际治疗执行费用、药物/住院/放疗或骨保护等病例相关项目；治疗执行费用必须具体列为手术/消融/TACE/HAIC/放疗/药物/PCI/CABG等，不能只写“主要治疗”或“方案评估”；每项 item/cost/note',
     services: '专属配套增值服务费用；至少4项，覆盖资料整理翻译、专家预审、医院对接、陪诊、远程随访等；每项 item/cost/note',
     living: '外籍在华生活刚需费用；至少4项，覆盖签证/机票/住宿/餐饮交通/通讯保险备用金等；每项 item/cost/note',
     grandTotal: '三类小计相加后的总区间，人民币在前、美元在后，例如 ¥80,000-¥280,000（约$11,111-$38,889）',
     volatilityNote: '写成完整中文句子，说明治疗强度、药物品牌、住院天数、城市、汇率和保险会影响费用；不要照抄字段说明',
   },
+  countryComparison: '至少包含中国和用户选择的主要地区；每项含 flag/country/cost/waitTime/strengths/limitations/fitScore/recommended。fitScore 要体现相对差异；中国项应结合当前病例说明为什么适合/不适合。不能全部为0，不能全部写暂不比较。',
+  hospitalRecommendations: '牙科仅返回深圳鼎植口腔；其他病种尽量返回3家中国医院。每项含 city/hospital/department/whyFit/preparation/matchScore；必须说明与当前病情、资料状态、治疗诉求的匹配理由；matchScore 要有相对差异，不能全部为0。',
+  itinerary: '至少5个阶段；每项含 dayRange/stage/tasks；覆盖出发前资料预审、抵华建档、补充检查、方案确认、治疗执行/回国随访；时间线要贴合用户期望治疗窗口。',
+  servicePlan: '至少5项；每项含 service/value；覆盖病历翻译整理、专家预审、医院对接、签证行程、陪诊、保险费用协助、远程随访等专业版服务。',
+  paymentAndInsurance: '3-5条自然中文；包含预算分项、保险预授权/直付/事后理赔、材料清单、不承诺报销、跨境支付准备。',
+  risksAndDisclaimers: '至少4条自然中文；包含资料不完整风险、医生/医院最终确认、费用汇率和保险波动、跨境就医风险、急症或病情加重优先当地处理。',
+  nextSteps: '3-5条可执行动作，按优先级排序；覆盖补齐关键资料、发起专家/医院预审、确认预算保险和出行排期，不要只写“补充资料”。',
+}
+
+const isProfessionalTreatmentExecutionCostItem = (item: ProfessionalReport['costBreakdown']['medical']['items'][number]) => {
+  const label = normalizeText(item.item)
+  const text = `${item.item} ${item.note}`
+  if (!parseUsdRange(item.cost)) return false
+  if (!professionalTreatmentExecutionPattern.test(text)) return false
+  if (professionalAssessmentOnlyPattern.test(label)) return false
+  if (/^(主要治疗项目|主要治疗执行费用|治疗执行费用|治疗或用药费用|治疗费用)$/i.test(label)) return false
+  if (/住院|围术期/.test(label) && !/手术|介入|PCI|支架|搭桥|CABG|消融|TACE|HAIC|治疗/i.test(label)) return false
+  return true
+}
+
+const isProfessionalChronicCareExecutionCostItem = (item: ProfessionalReport['costBreakdown']['medical']['items'][number]) => {
+  const text = `${item.item} ${item.note}`
+  if (!parseUsdRange(item.cost)) return false
+  return /用药|药物|胰岛素|GLP-?1|SGLT2|二甲双胍|CGM|连续血糖|血糖监测|并发症筛查|眼底|尿微量白蛋白|神经传导|营养|运动|远程随访|管理方案/i.test(text)
+}
+
+const getProfessionalCostBreakdownFailure = (value: unknown, context?: ProfessionalContext) => {
+  const parsed = professionalReportSchema.shape.costBreakdown.safeParse(value)
+  if (!parsed.success) return '费用拆分结构不符合页面字段要求。'
+  const text = JSON.stringify(parsed.data)
+  const totals = [
+    parsed.data.medical.total,
+    parsed.data.services.total,
+    parsed.data.living.total,
+    parsed.data.grandTotal,
+  ]
+  const allTotalsUnavailable = totals.every((total) => /暂不估算|资料不足|需医生确认/.test(total))
+  const hasAnyNumericCost = /[￥¥$]\s*\d/.test(text)
+  if (allTotalsUnavailable || (!hasAnyNumericCost && /暂不|资料不足/.test(text))) return '费用拆分没有可展示的金额区间。'
+  if (parsed.data.medical.items.length < 4) return '核心医疗费用少于4项。'
+  if (parsed.data.services.items.length < 4) return '配套服务费用少于4项。'
+  if (parsed.data.living.items.length < 4) return '生活费用少于4项。'
+  const caseText = context ? getSubmittedEvidenceText(context.input) : text
+  const shouldRequireTreatmentExecution = !['other', 'premium_checkup'].includes(context?.diseaseKey || '')
+  const wantsTreatment = shouldRequireTreatmentExecution && (professionalTreatmentExecutionPattern.test(caseText) || /手术|治疗|住院|放疗|化疗|靶向|免疫|介入|消融|种植|修复/i.test(caseText))
+  const executionItems = parsed.data.medical.items.filter((item) => (
+    isProfessionalTreatmentExecutionCostItem(item) ||
+    (context?.diseaseKey === 'endocrinology_metabolism' && isProfessionalChronicCareExecutionCostItem(item))
+  ))
+  const expectedExecutionItemCount = wantsTreatment ? 1 : 0
+  if (wantsTreatment && executionItems.length < expectedExecutionItemCount) {
+    return '核心医疗费用缺少具体的实际治疗执行费用。请至少返回1项手术/麻醉住院、消融、TACE/HAIC介入、放疗疗程、化疗/靶向/免疫药物、PCI支架/CABG搭桥、根管/种植、慢病药物等执行费用；不要用检查、检测、病理/影像复核、会诊、MDT、方案评估或“主要治疗执行费用”替代。'
+  }
+  return null
+}
+
+const getProfessionalCountryComparisonFailure = (value: unknown) => {
+  const parsed = professionalReportSchema.shape.countryComparison.safeParse(value)
+  if (!parsed.success) return '国家对比结构不符合页面字段要求。'
+  if (parsed.data.length < 2) return '国家对比少于2个国家/地区。'
+  const text = JSON.stringify(parsed.data)
+  if (/暂不比较|暂不估算|资料不足/.test(text) && parsed.data.every((item) => item.fitScore === 0)) return '国家对比全部为资料不足。'
+  if (!parsed.data.some((item) => item.recommended || isChinaRegionLabel(item.country))) return '国家对比缺少中国方案。'
+  if (parsed.data.every((item) => item.fitScore === 0)) return '国家对比 fitScore 全部为0。'
+  if (!parsed.data.some((item) => /[￥¥$]\s*\d|\d/.test(item.cost))) return '国家对比缺少费用区间或量级。'
+  return null
+}
+
+const genericProfessionalSectionPattern = /string|number|array|object|字段|示例|模板|占位符|占位文本|待填写|暂无数据|暂不生成|当前不展示|系统不会使用通用模板/i
+const unavailableProfessionalTextPattern = /资料不足|暂不|无法评估|无法判断|需补充资料|需医生确认|待补充|待确认/
+
+const getProfessionalStringArrayFailure = (
+  value: unknown,
+  minimum: number,
+  label: string,
+  options: { maxUnavailableItems?: number; requireActionable?: boolean } = {},
+) => {
+  const parsed = professionalReportSchema.shape.executiveSummary.safeParse(value)
+  if (!parsed.success || !Array.isArray(value)) {
+    const normalized = normalizeStringArray(value)
+    if (normalized.length < minimum) return `${label}少于${minimum}条。`
+    const unavailableCount = normalized.filter((item) => unavailableProfessionalTextPattern.test(item)).length
+    if (unavailableCount > (options.maxUnavailableItems ?? Math.max(1, minimum - 1))) return `${label}过多使用资料不足提示。`
+    if (normalized.some((item) => genericProfessionalSectionPattern.test(item))) return `${label}包含字段说明或占位文本。`
+    if (options.requireActionable && normalized.every((item) => /^补充|提供|上传|整理/.test(item))) return `${label}全部停留在补资料，缺少预审/预算/排期等后续动作。`
+    return null
+  }
+
+  const items = parsed.data
+  if (items.length < minimum) return `${label}少于${minimum}条。`
+  if (items.some((item) => genericProfessionalSectionPattern.test(item))) return `${label}包含字段说明或占位文本。`
+  const unavailableCount = items.filter((item) => unavailableProfessionalTextPattern.test(item)).length
+  if (unavailableCount > (options.maxUnavailableItems ?? Math.max(1, minimum - 1))) return `${label}过多使用资料不足提示。`
+  if (options.requireActionable && items.every((item) => /^补充|提供|上传|整理/.test(item))) return `${label}全部停留在补资料，缺少预审/预算/排期等后续动作。`
+  return null
+}
+
+const getProfessionalExecutiveSummaryFailure = (value: unknown) => (
+  getProfessionalStringArrayFailure(value, 3, '核心摘要', { maxUnavailableItems: 1 })
+)
+
+const getProfessionalDiagnosticConclusionFailure = (value: unknown) => {
+  const parsed = professionalReportSchema.shape.diagnosticConclusion.safeParse(value)
+  if (!parsed.success) return '诊断解读结构不符合页面字段要求。'
+  const text = JSON.stringify(parsed.data)
+  if (genericProfessionalSectionPattern.test(text)) return '诊断解读包含字段说明或占位文本。'
+  if (getUnavailableSignalCount(parsed.data) >= 2) return '诊断解读过多使用资料不足提示。'
+  if (parsed.data.evidenceBasis.length < 2) return '诊断解读缺少足够证据依据。'
+  if (!parsed.data.indicatorInterpretations.length) return '诊断解读缺少关键指标解释。'
+  return null
+}
+
+const getProfessionalClinicalAssessmentFailure = (value: unknown) => {
+  const parsed = professionalReportSchema.shape.clinicalAssessment.safeParse(value)
+  if (!parsed.success) return '病情评估结构不符合页面字段要求。'
+  const text = JSON.stringify(parsed.data)
+  if (genericProfessionalSectionPattern.test(text)) return '病情评估包含字段说明或占位文本。'
+  if (getUnavailableSignalCount(parsed.data) >= 2) return '病情评估过多使用资料不足提示。'
+  if (!parsed.data.workingDiagnosis.trim()) return '病情评估缺少工作诊断。'
+  if (!parsed.data.severity.trim()) return '病情评估缺少严重程度。'
+  if (parsed.data.keyFindings.length < 2) return '病情评估缺少关键发现。'
+  if (parsed.data.decisionQuestions.length < 2) return '病情评估缺少关键决策问题。'
+  return null
+}
+
+const getProfessionalPrognosisComparisonFailure = (value: unknown) => {
+  const parsed = professionalReportSchema.shape.prognosisComparison.safeParse(value)
+  if (!parsed.success) return '预后和管理价值对比结构不符合页面字段要求。'
+  const text = JSON.stringify(parsed.data)
+  if (genericProfessionalSectionPattern.test(text)) return '预后和管理价值对比包含字段说明或占位文本。'
+  if (parsed.data.metrics.length < 2) return '预后和管理价值对比少于2项指标。'
+  if (hasDuplicatedPrognosisMetricRows(parsed.data)) return '预后和管理价值对比指标内容过于重复。'
+  if (hasUnsupportedOutcomeMetric(parsed.data) || hasOutcomeRateLeak(text)) return '预后和管理价值对比包含不适合展示的疗效/生存率指标。'
+  return null
+}
+
+const getProfessionalTechnologyAdvantagesFailure = (value: unknown) => {
+  const parsed = professionalReportSchema.shape.technologyAdvantages.safeParse(value)
+  if (!parsed.success) return '前沿技术优势结构不符合页面字段要求。'
+  const text = JSON.stringify(parsed.data)
+  if (genericProfessionalSectionPattern.test(text)) return '前沿技术优势包含字段说明或占位文本。'
+  if (getUnavailableSignalCount(parsed.data) >= 2) return '前沿技术优势过多使用资料不足提示。'
+  const genericItems = parsed.data.filter((item) => (
+    /前沿疗法匹配|药物或技术可及性|MDT或专科优势|暂不生成|暂不推荐/.test(`${item.technology}${item.value}`)
+  ))
+  if (genericItems.length >= parsed.data.length - 1) return '前沿技术优势过于泛化。'
+  return null
+}
+
+const getProfessionalHospitalRecommendationsFailure = (value: unknown, context?: ProfessionalContext) => {
+  const parsed = professionalReportSchema.shape.hospitalRecommendations.safeParse(value)
+  if (!parsed.success) return '医院推荐结构不符合页面字段要求。'
+  if (context?.diseaseKey === 'dental') {
+    if (!parsed.data.some((item) => item.hospital.includes('鼎植'))) return '牙科报告缺少指定牙科机构。'
+    if (parsed.data.some((item) => !item.hospital.includes('鼎植'))) return '牙科报告不能推荐其他口腔医院。'
+  } else if (parsed.data.length < 3) {
+    return '医院推荐少于3家。'
+  }
+  const text = JSON.stringify(parsed.data)
+  if (genericProfessionalSectionPattern.test(text)) return '医院推荐包含字段说明或占位文本。'
+  if (parsed.data.every((item) => item.matchScore === 0)) return '医院推荐匹配度全部为0。'
+  if (parsed.data.every((item) => /暂不推荐|待确认|需补充资料/.test(item.hospital))) return '医院推荐没有可展示医院。'
+  return null
+}
+
+const getProfessionalItineraryFailure = (value: unknown, context?: ProfessionalContext) => {
+  const parsed = professionalReportSchema.shape.itinerary.safeParse(value)
+  if (!parsed.success) return '来华行程结构不符合页面字段要求。'
+  if (parsed.data.length < 5) return '来华行程少于5个阶段。'
+  const text = JSON.stringify(parsed.data)
+  if (genericProfessionalSectionPattern.test(text)) return '来华行程包含字段说明或占位文本。'
+  const stagesText = parsed.data.map((item) => item.stage).join(' ')
+  const precheckText = `${stagesText} ${text}`
+  const executionPattern = context?.diseaseKey === 'endocrinology_metabolism'
+    ? /治疗|手术|介入|用药|方案|筛查|监测|CGM|血糖|并发症|眼底|肾|神经|营养|运动|健康管理|随访/
+    : context?.diseaseKey === 'premium_checkup'
+      ? /体检|筛查|检查|影像|内镜|实验室|专家解读|健康管理|专科承接|随访|方案/
+      : context?.diseaseKey === 'cardiovascular_tumor'
+        ? /治疗|手术|介入|取栓|切除|MRI|超声|MDT|心外|心内|围术期|风险评估|方案/
+        : /治疗|手术|介入|用药|方案/
+  if (!/预审|资料|复核|准备|建档/.test(precheckText) || !executionPattern.test(text)) return '来华行程缺少预审或病种执行阶段。'
+  return null
+}
+
+const getProfessionalServicePlanFailure = (value: unknown) => {
+  const parsed = professionalReportSchema.shape.servicePlan.safeParse(value)
+  if (!parsed.success) return '服务包结构不符合页面字段要求。'
+  if (parsed.data.length < 5) return '服务包少于5项。'
+  const text = JSON.stringify(parsed.data)
+  if (genericProfessionalSectionPattern.test(text)) return '服务包包含字段说明或占位文本。'
+  if (!/翻译|整理|病历|资料/.test(text) || !/预审|专家|医生/.test(text) || !/医院|预约|对接/.test(text)) return '服务包缺少资料、预审或医院对接服务。'
+  return null
+}
+
+const getProfessionalPaymentAndInsuranceFailure = (value: unknown) => (
+  getProfessionalStringArrayFailure(value, 3, '支付与保险', { maxUnavailableItems: 1 })
+)
+
+const getProfessionalRisksFailure = (value: unknown) => {
+  const baseFailure = getProfessionalStringArrayFailure(value, 4, '风险提示', { maxUnavailableItems: 1 })
+  if (baseFailure) return baseFailure
+  const text = JSON.stringify(value)
+  if (!/资料|原件|完整/.test(text)) return '风险提示缺少资料完整性风险。'
+  if (!/医生|医院|最终|正式/.test(text)) return '风险提示缺少医生或医院最终确认。'
+  if (!/费用|汇率|保险|报销/.test(text)) return '风险提示缺少费用、汇率或保险波动。'
+  if (!/急症|当地|加重|紧急/.test(text)) return '风险提示缺少急症优先当地处理。'
+  return null
+}
+
+const getProfessionalNextStepsFailure = (value: unknown) => (
+  getProfessionalStringArrayFailure(value, 3, '下一步行动', { maxUnavailableItems: 1, requireActionable: true })
+)
+
+const getProfessionalRecoveryFieldFailure = (
+  field: ProfessionalRecoveryField,
+  value: unknown,
+  context?: ProfessionalContext,
+) => {
+  switch (field) {
+    case 'executiveSummary':
+      return getProfessionalExecutiveSummaryFailure(value)
+    case 'diagnosticConclusion':
+      return getProfessionalDiagnosticConclusionFailure(value)
+    case 'clinicalAssessment':
+      return getProfessionalClinicalAssessmentFailure(value)
+    case 'treatmentPathway':
+      return null
+    case 'prognosisComparison':
+      return getProfessionalPrognosisComparisonFailure(value)
+    case 'technologyAdvantages':
+      return getProfessionalTechnologyAdvantagesFailure(value)
+    case 'costBreakdown':
+      return getProfessionalCostBreakdownFailure(value, context)
+    case 'countryComparison':
+      return getProfessionalCountryComparisonFailure(value)
+    case 'hospitalRecommendations':
+      return getProfessionalHospitalRecommendationsFailure(value, context)
+    case 'itinerary':
+      return getProfessionalItineraryFailure(value, context)
+    case 'servicePlan':
+      return getProfessionalServicePlanFailure(value)
+    case 'paymentAndInsurance':
+      return getProfessionalPaymentAndInsuranceFailure(value)
+    case 'risksAndDisclaimers':
+      return getProfessionalRisksFailure(value)
+    case 'nextSteps':
+      return getProfessionalNextStepsFailure(value)
+    default:
+      return null
+  }
 }
 
 const getUnavailableSignalCount = (value: unknown) => {
@@ -3286,12 +4206,123 @@ const getUnavailableSignalCount = (value: unknown) => {
   ].filter((signal) => text.includes(signal)).length
 }
 
+function hasOutcomeRateLeak(text: string) {
+  return /(?:\d+\s*年)?(?:生存率|治愈率|缓解率|有效率|客观缓解率|无进展生存|总生存)[^，。；;]{0,24}(?:>\s*)?\d+\s*(?:[-~至]\s*\d+\s*)?%/i.test(text) ||
+    /(?:>\s*)?\d+\s*(?:[-~至]\s*\d+\s*)?%[^，。；;]{0,24}(?:生存率|治愈率|缓解率|有效率|客观缓解率|无进展生存|总生存)/i.test(text)
+}
+
+function hasUnsupportedOutcomeMetric(value: unknown) {
+  const parsed = professionalReportSchema.shape.prognosisComparison.safeParse(value)
+  if (!parsed.success) return false
+  return parsed.data.metrics.some((metric) => (
+    /治疗成功率|长期生存率|生存率|治愈率|缓解率|有效率|客观缓解率|无进展生存|总生存|OS|PFS/i.test(`${metric.metric}${metric.currentRisk}${metric.chinaReference}${metric.note}`)
+  ))
+}
+
+function hasDuplicatedPrognosisMetricRows(value: unknown) {
+  const parsed = professionalReportSchema.shape.prognosisComparison.safeParse(value)
+  if (!parsed.success) return false
+  const duplicatedMetricRows = parsed.data.metrics.filter((metric) => {
+    const metricText = normalizeText(metric.metric)
+    const currentRiskText = normalizeText(metric.currentRisk)
+    const noteText = normalizeText(metric.note)
+    return Boolean(metricText && (
+      metricText === currentRiskText ||
+      metricText === noteText ||
+      currentRiskText === noteText
+    ))
+  })
+  return duplicatedMetricRows.length >= Math.max(1, parsed.data.metrics.length - 1)
+}
+
 const looksLikeUnavailableRecoverySection = (
   field: ProfessionalRecoveryField,
   value: unknown,
+  context?: ProfessionalContext,
 ) => {
   const text = JSON.stringify(value)
+  const hardUnavailableTemplate = /当前资料不足以生成可靠结论|资料不足，暂不生成|暂不生成可靠结论|当前不展示|暂不比较|缺少关键资料时不展示/
+
+  if (field === 'executiveSummary') {
+    const parsed = professionalReportSchema.shape.executiveSummary.safeParse(value)
+    if (parsed.success && parsed.data.length >= 3) {
+      const usefulItems = parsed.data.filter((item) => !hardUnavailableTemplate.test(item))
+      if (usefulItems.length >= 3 && !parsed.data.some((item) => genericProfessionalSectionPattern.test(item))) return false
+    }
+  }
+
+  if (field === 'diagnosticConclusion') {
+    const parsed = professionalReportSchema.shape.diagnosticConclusion.safeParse(value)
+    if (parsed.success) {
+      const sectionText = JSON.stringify(parsed.data)
+      if (
+        parsed.data.indicatorInterpretations.length >= 1 &&
+        parsed.data.evidenceBasis.length >= 2
+      ) return hardUnavailableTemplate.test(sectionText)
+    }
+  }
+
+  if (field === 'clinicalAssessment') {
+    const parsed = professionalReportSchema.shape.clinicalAssessment.safeParse(value)
+    if (parsed.success) {
+      const sectionText = JSON.stringify(parsed.data)
+      if (
+        parsed.data.keyFindings.length >= 2 &&
+        parsed.data.decisionQuestions.length >= 2
+      ) return hardUnavailableTemplate.test(sectionText)
+    }
+  }
+
+  if (field === 'prognosisComparison') {
+    const parsed = professionalReportSchema.shape.prognosisComparison.safeParse(value)
+    if (parsed.success) {
+      const sectionText = JSON.stringify(parsed.data)
+      const unavailableMetrics = parsed.data.metrics.filter((metric) => (
+        /暂不比较|需资料确认|需医生复核/.test(`${metric.currentRisk}${metric.chinaReference}${metric.note}`)
+      ))
+      const outcomeRateLeak = hasOutcomeRateLeak(sectionText)
+      const unsupportedMetric = hasUnsupportedOutcomeMetric(parsed.data)
+      const duplicatedMetricRows = hasDuplicatedPrognosisMetricRows(parsed.data)
+      if (
+        parsed.data.metrics.length >= 2
+      ) return hardUnavailableTemplate.test(sectionText) ||
+        unavailableMetrics.length === parsed.data.metrics.length ||
+        outcomeRateLeak ||
+        unsupportedMetric ||
+        duplicatedMetricRows
+    }
+  }
+
+  if (field === 'technologyAdvantages') {
+    const parsed = professionalReportSchema.shape.technologyAdvantages.safeParse(value)
+    if (parsed.success && parsed.data.length >= 3) {
+      const usefulItems = parsed.data.filter((item) => (
+        !hardUnavailableTemplate.test(`${item.technology}${item.value}${item.applicability}`) &&
+        !/前沿疗法匹配|药物或技术可及性|MDT或专科优势|暂不生成|暂不推荐/.test(`${item.technology}${item.value}`)
+      ))
+      if (usefulItems.length >= 3 && !genericProfessionalSectionPattern.test(JSON.stringify(parsed.data))) return false
+    }
+  }
+
+  if (field === 'hospitalRecommendations') {
+    const parsed = professionalReportSchema.shape.hospitalRecommendations.safeParse(value)
+    if (parsed.success && parsed.data.length >= (context?.diseaseKey === 'dental' ? 1 : 3)) {
+      if (
+        !parsed.data.every((item) => item.matchScore === 0) &&
+        !parsed.data.every((item) => /暂不推荐|待确认|需补充资料/.test(item.hospital)) &&
+        !genericProfessionalSectionPattern.test(JSON.stringify(parsed.data))
+      ) return false
+    }
+  }
+
+  if (field === 'itinerary') {
+    const parsed = professionalReportSchema.shape.itinerary.safeParse(value)
+    if (parsed.success && !getProfessionalItineraryFailure(parsed.data, context)) return false
+  }
+
   if (getUnavailableSignalCount(value) >= 2) return true
+  const fieldFailure = getProfessionalRecoveryFieldFailure(field, value, context)
+  if (fieldFailure) return true
 
   if (field === 'treatmentPathway') {
     const parsed = professionalReportSchema.shape.treatmentPathway.safeParse(value)
@@ -3307,46 +4338,57 @@ const looksLikeUnavailableRecoverySection = (
     const unavailableMetrics = parsed.data.metrics.filter((metric) => (
       /暂不比较|需资料确认|需医生复核/.test(`${metric.currentRisk}${metric.chinaReference}${metric.note}`)
     ))
-    const duplicatedMetricRows = parsed.data.metrics.filter((metric) => {
-      const metricText = normalizeText(metric.metric)
-      const currentRiskText = normalizeText(metric.currentRisk)
-      const noteText = normalizeText(metric.note)
-      return Boolean(metricText && (
-        metricText === currentRiskText ||
-        metricText === noteText ||
-        currentRiskText === noteText
-      ))
-    })
-    const outcomeRateLeak = /(?:\d+\s*年)?生存率|治愈率|>\s*\d+\s*%|\d+\s*[-~至]\s*\d+\s*%/.test(text)
-    return unavailableMetrics.length === parsed.data.metrics.length &&
-      /资料不足|当前不展示|暂不/.test(`${parsed.data.positioning}${parsed.data.conclusion}`) ||
-      duplicatedMetricRows.length >= Math.max(1, parsed.data.metrics.length - 1) ||
+    const outcomeRateLeak = hasOutcomeRateLeak(text)
+    return (
+      unavailableMetrics.length === parsed.data.metrics.length &&
+      /资料不足|当前不展示|暂不/.test(`${parsed.data.positioning}${parsed.data.conclusion}`)
+    ) ||
+      hasDuplicatedPrognosisMetricRows(parsed.data) ||
+      hasUnsupportedOutcomeMetric(parsed.data) ||
       outcomeRateLeak
   }
 
-  const parsed = professionalReportSchema.shape.costBreakdown.safeParse(value)
-  if (!parsed.success) return false
-  const totals = [
-    parsed.data.medical.total,
-    parsed.data.services.total,
-    parsed.data.living.total,
-    parsed.data.grandTotal,
-  ]
-  const allTotalsUnavailable = totals.every((total) => /暂不估算|资料不足|需医生确认/.test(total))
-  const hasAnyNumericCost = /[￥¥$]\s*\d/.test(text)
-  return allTotalsUnavailable || (!hasAnyNumericCost && /暂不|资料不足/.test(text))
+  if (field === 'costBreakdown') {
+    return Boolean(getProfessionalCostBreakdownFailure(value, context))
+  }
+
+  if (field === 'countryComparison') {
+    return Boolean(getProfessionalCountryComparisonFailure(value))
+  }
+
+  return false
 }
 
-const getProfessionalRecoveryFields = (patch: ProfessionalReportPatch) => (
+const getProfessionalRecoveryFields = (patch: ProfessionalReportPatch, context: ProfessionalContext) => (
   professionalRecoveryFields.filter((field) => {
     const value = patch[field]
     if (value === undefined) return true
 
     const schema = professionalReportSchema.shape[field]
     const result = schema.safeParse(value)
-    return !result.success || looksLikeUnavailableRecoverySection(field, result.data)
+    return !result.success || looksLikeUnavailableRecoverySection(field, result.data, context)
   })
 )
+
+const describeProfessionalRecoveryFieldIssue = (
+  field: ProfessionalRecoveryField,
+  patch: ProfessionalReportPatch,
+  context: ProfessionalContext,
+) => {
+  const value = patch[field]
+  if (value === undefined) return '字段缺失'
+
+  const schema = professionalReportSchema.shape[field]
+  const result = schema.safeParse(value)
+  if (!result.success) {
+    return `结构不符合: ${result.error.issues.slice(0, 3).map((issue) => `${issue.path.join('.') || '(root)'} ${issue.message}`).join('; ')}`
+  }
+
+  const failure = getProfessionalRecoveryFieldFailure(field, result.data, context)
+  if (failure) return failure
+  if (looksLikeUnavailableRecoverySection(field, result.data, context)) return '内容过于泛化或不可展示'
+  return ''
+}
 
 const buildProfessionalSectionRecoveryPrompt = (
   context: ProfessionalContext,
@@ -3355,24 +4397,42 @@ const buildProfessionalSectionRecoveryPrompt = (
   fields: ProfessionalRecoveryField[],
 ): MedicalLlmMessage[] => {
   const { input, disease, diseaseKey, selectedRegions, dataCompleteness, missingMaterials, decisionQuestions, redFlags, documentKnowledge } = context
-  const baseline = compactRuleReportForPrompt(ruleReport)
+  const treatmentExecutionHints = getProfessionalTreatmentExecutionPromptHints(context)
+  const treatmentCostExamples = getProfessionalTreatmentExecutionCostExamples(context)
+  const diseaseSpecificHints = getProfessionalDiseaseSpecificPromptHints(context)
+  const candidateHospitals = getCandidateHospitalPromptData(context)
+  const chronicOrScreeningCostNote = ['endocrinology_metabolism', 'premium_checkup'].includes(diseaseKey)
+    ? '慢病/体检类病例的核心医疗执行费用可以是并发症筛查、动态监测、用药调整、营养运动管理、专家解读和远程随访，不必强行写手术或住院；但仍需给可解析金额区间。'
+    : ''
   const requestedOutputRequirements = Object.fromEntries(fields.map((field) => [
     field,
     professionalRecoveryOutputRequirements[field],
   ]))
+  const previousFailureReasons = Object.fromEntries(fields.map((field) => {
+    const value = patch[field]
+    if (value === undefined) return [field, '该字段缺失。']
+    const result = professionalReportSchema.shape[field].safeParse(value)
+    if (!result.success) return [field, '该字段结构不符合页面字段要求。']
+    const failure = getProfessionalRecoveryFieldFailure(field, result.data, context)
+    if (failure) return [field, failure]
+    return [field, looksLikeUnavailableRecoverySection(field, result.data, context) ? '上一版内容过于泛化或不可展示。' : '需进一步细化。']
+  }))
 
   return [
     {
       role: 'system',
       content: [
         '你是寰宇云医专业版报告的关键章节修复助手。',
-        '上一步医疗模型已经返回了大部分报告 patch；你只修复请求中列出的关键章节，不输出完整报告，也不要重复其他字段。',
-        '所有内容必须基于当前患者资料、上传资料结构化事实、病种方向、资料完整度、用户就医意图和规则基线。',
+        '上一步医疗模型已经返回了大部分报告数据；你只修复请求中列出的关键章节，不输出完整报告，也不要重复其他字段。',
+        '输出 JSON 顶层只能包含 requestedFields 中列出的字段；不要输出 task、requestedFields、outputRequirements、patientInput、matchedKnowledge、pageFieldReference、previousModelOutput、previousFailureReasons 或 qualityRules。',
+        '所有内容必须基于当前患者资料、上传资料结构化事实、病种方向、资料完整度和用户就医意图。',
         '能基于资料给出审慎区间/量级/等待条件时必须给出数据并标注需预审确认；完全无法支撑时才使用柔和资料不足提示。',
         '费用必须尽量有决策价值，不要只写预审费；需要覆盖首阶段检查、治疗/用药/住院/放疗或支持治疗、配套服务和在华生活刚需。',
+        chronicOrScreeningCostNote,
+        fields.includes('costBreakdown') && treatmentCostExamples.length ? `本次修复 costBreakdown 时，核心医疗费用必须优先补齐这些实际治疗执行费用并给可解析金额：${treatmentCostExamples.join('；')}。检查、会诊、MDT或方案评估不能替代这些治疗费用。` : '',
         '不得编造医生姓名、真实床位、可预约号源、疗效承诺、治愈率或保险报销结论。',
         '输出必须是严格 JSON，不要 Markdown，不要解释。',
-      ].join('\n'),
+      ].filter(Boolean).join('\n'),
     },
     {
       role: 'user',
@@ -3392,11 +4452,13 @@ const buildProfessionalSectionRecoveryPrompt = (
             advantages: disease.advantages,
             hospitals: disease.hospitals,
           },
+          candidateHospitals,
           selectedRegions,
           dataCompleteness,
           missingMaterials,
           decisionQuestions,
           redFlags,
+          diseaseSpecificHints,
           dentalPartner: diseaseKey === 'dental' ? dentalPartner : undefined,
           structuredMedicalFacts: {
             summary: context.medicalFacts.summary,
@@ -3420,28 +4482,157 @@ const buildProfessionalSectionRecoveryPrompt = (
             evidenceSummary: limitText(block.evidenceSummary, 180),
             keywords: block.keywords.slice(0, 8),
           })).slice(0, 4),
+          treatmentExecutionCostKeywords: fields.includes('costBreakdown')
+            ? treatmentCostExamples
+            : undefined,
         },
-        baselineRuleReport: {
-          treatmentPathway: baseline.treatmentPathway,
-          prognosisComparison: ruleReport.prognosisComparison,
-          costBreakdown: baseline.costBreakdown,
-          countryComparison: baseline.countryComparison,
-          hospitalRecommendations: baseline.hospitalRecommendations,
+        pageFieldReference: {
+          treatmentPathway: 'goal + phases[]: phase/timeline/actions/output',
+          prognosisComparison: 'positioning + metrics[] + conclusion',
+          costBreakdown: 'currencyNote + medical/services/living + grandTotal + volatilityNote',
+          countryComparison: 'countryComparison[]: flag/country/cost/waitTime/strengths/limitations/fitScore/recommended',
+          hospitalRecommendations: 'hospitalRecommendations[]: city/hospital/department/whyFit/preparation/matchScore',
+          executiveSummary: 'executiveSummary[]: 3-5条核心摘要',
+          diagnosticConclusion: 'finalImpression/severityInterpretation/indicatorInterpretations/evidenceBasis',
+          clinicalAssessment: 'workingDiagnosis/severity/keyFindings/redFlags/missingMaterials/decisionQuestions',
+          technologyAdvantages: 'technologyAdvantages[]: technology/value/applicability',
+          itinerary: 'itinerary[]: dayRange/stage/tasks',
+          servicePlan: 'servicePlan[]: service/value',
+          paymentAndInsurance: 'paymentAndInsurance[]',
+          risksAndDisclaimers: 'risksAndDisclaimers[]',
+          nextSteps: 'nextSteps[]',
         },
         previousModelOutput: Object.fromEntries(fields.map((field) => [
           field,
           limitText(JSON.stringify(patch[field] || null), 1800),
         ])),
+        previousFailureReasons,
         qualityRules: [
           '只输出 requestedFields 中的字段；不要输出 id/date/title/patientSnapshot/generatedBy。',
           '不要复制 previousModelOutput 中已经明显失败或过于泛化的软提示。',
           '字段内容必须是给用户看的自然中文，不得以“string；”“number；”“array；”“object；”等字段类型说明开头。',
           '如果金额只能估算，用人民币和美元区间表达；美元按 1 USD≈7.2 RMB 折算。',
           '如果资料不够精确，也要尽量给可用于决策的量级、范围和需确认条件。',
-          '预后对比只能讨论治疗窗口、风险管理、随访/MDT价值和资料缺口，不得承诺疗效、治愈或生存期。',
+          '费用拆分中核心医疗费用不能只写检查、复核、会诊、MDT或评估；治疗型病例必须分别列出实际治疗执行费用，例如手术/麻醉住院、TACE/HAIC、消融、放疗、靶向/免疫药物、PCI支架或CABG搭桥。',
+          chronicOrScreeningCostNote,
+          fields.includes('costBreakdown') && treatmentCostExamples.length ? `本例费用拆分必须至少包含这些实际费用项中的1项并给可解析金额，能支撑时尽量分别列出：${treatmentCostExamples.join('；')}。` : '',
+          fields.includes('costBreakdown') && diseaseKey === 'lung_cancer' ? '肺癌费用修复必须补齐 EGFR-TKI靶向药物首月/疗程、骨转移支持治疗，并按症状或承重骨风险写局部放疗/镇痛支持条件性费用；不要只返回检查、影像、MDT或方案咨询。' : '',
+          fields.includes('costBreakdown') && diseaseKey === 'liver_cancer' ? '肝癌费用修复必须补齐 TACE/HAIC介入、射频/微波消融、系统治疗药物首月或围手术期候选费用；不要只返回增强MRI、AFP、肝功能和会诊。' : '',
+          '国家对比必须返回可展示的中国与其他地区对比，fitScore 不能全部为0，cost/waitTime/strengths/limitations 要给有决策价值的区间或量级。',
+          '医院推荐必须返回能展示的医院/机构和适配理由；除牙科指定机构外，尽量返回3家中国医院。matchedKnowledge.candidateHospitals 是可选候选列表，可基于当前病例选择和改写，不是前端兜底。',
+          '来华行程必须贴合病种：慢病/体检可以写筛查、监测、用药调整、专家解读、健康管理；心血管占位可以写MRI/超声复核、心内心外MDT、手术/介入风险评估和围术期准备。',
+          '专业服务、支付保险、风险提示和下一步行动必须是给用户看的自然中文，不能只写字段解释或通用占位。',
+          '预后对比只能讨论治疗窗口、风险管理、随访/MDT价值和资料缺口，不得承诺疗效、治愈或生存期；不要使用“治疗成功率、长期生存率、治愈率、生存率、缓解率、有效率”等指标名。',
+          fields.includes('prognosisComparison') && diseaseKey === 'dental' ? '牙科预后对比必须输出至少2项非疗效指标，例如“保牙判断窗口”“感染/疼痛风险管理”“根管后修复稳定性”“种植路径复杂度”“复诊维护连续性”；不得整节写“资料不足/暂不比较”。' : '',
+          fields.includes('prognosisComparison') && diseaseKey === 'breast_cancer' ? '乳腺癌预后对比必须输出至少2项非疗效指标，例如“分期确认窗口”“保乳/全切决策”“腋窝风险管理”“辅助治疗连续性”“跨境随访基线”；不得整节写“资料不足/暂不比较”。' : '',
+          fields.includes('prognosisComparison') && diseaseKey === 'spine_surgery' ? '脊柱外科预后对比必须输出至少2项非疗效指标，例如“神经功能窗口”“手术指征确认”“急症风险排查”“康复随访连续性”；不得整节写“资料不足/暂不比较”。' : '',
           diseaseKey === 'dental' ? `牙科只围绕${dentalPartner.name}及其适用资料要求，不推荐其他口腔医院。` : '',
           `不得出现“${forbiddenFeeQualifier}”。`,
         ].filter(Boolean),
+      }),
+    },
+  ]
+}
+
+const buildProfessionalPrognosisRecoveryPrompt = (
+  context: ProfessionalContext,
+  ruleReport: ProfessionalReport,
+  patch: ProfessionalReportPatch,
+): MedicalLlmMessage[] => {
+  const { input, disease, diseaseKey, dataCompleteness, missingMaterials, decisionQuestions, redFlags, documentKnowledge } = context
+  const diseaseSpecificHints = getProfessionalDiseaseSpecificPromptHints(context)
+  const previousValue = patch.prognosisComparison
+  const previousResult = professionalReportSchema.shape.prognosisComparison.safeParse(previousValue)
+  const previousFailure = previousValue === undefined
+    ? 'prognosisComparison 缺失。'
+    : previousResult.success
+      ? getProfessionalPrognosisComparisonFailure(previousResult.data) || (looksLikeUnavailableRecoverySection('prognosisComparison', previousResult.data, context) ? '上一版内容不可展示。' : '')
+      : 'prognosisComparison 结构不符合页面字段要求。'
+
+  return [
+    {
+      role: 'system',
+      content: [
+        '你是寰宇云医专业版报告的预后和管理价值对比修复助手。',
+        '你只输出 prognosisComparison 这一节，不输出完整报告，不输出其他字段。',
+        '本节不是疗效承诺，也不是生存率预测；只比较治疗窗口、风险管理、资料缺口、MDT/专科复核和跨境随访价值。',
+        '如果资料不完整，也要基于用户已提供的主诉、诊断方向、影像/病理摘要、就医诉求和治疗时间窗口，给出审慎但可展示的管理价值表达。',
+        '不得输出治愈率、生存率、缓解率、有效率、治疗成功率、OS、PFS 或百分比疗效指标。',
+        '不得整节写“资料不足”“暂不比较”“需医生复核”；资料限制应写在 note 的条件前提中。',
+        '输出必须是严格 JSON，不要 Markdown，不要解释。',
+      ].join('\n'),
+    },
+    {
+      role: 'user',
+      content: JSON.stringify({
+        task: '只修复专业报告 prognosisComparison',
+        requestedFields: ['prognosisComparison'],
+        outputSchema: {
+          prognosisComparison: {
+            positioning: '1-2句，自然中文，说明本节只做治疗窗口和管理价值对比，不承诺疗效。',
+            metrics: [
+              {
+                metric: '非疗效指标名，例如治疗窗口/风险管理/资料复核/康复连续性等',
+                currentRisk: '当前患者在该指标上的风险、限制或决策不确定性',
+                chinaReference: '中国医院/MDT/专科预审在该指标上的管理价值或可执行动作',
+                note: '适用前提、需补充资料或医生确认点；不能和 currentRisk 完全重复',
+              },
+            ],
+            conclusion: '1-2句，总结是否值得进入中国医院预审或应先补齐哪些关键资料，不承诺疗效。',
+          },
+        },
+        hardRequirements: [
+          'metrics 至少3项，metric/currentRisk/chinaReference/note 都必须非空。',
+          'metric 之间必须有差异，currentRisk 和 note 不能互相复制。',
+          '不得出现“资料不足，暂不生成”“暂不比较”“当前不展示”“需资料确认”“需医生复核”等整节不可展示表达。',
+          '不得使用治疗成功率、长期生存率、治愈率、生存率、缓解率、有效率、OS、PFS 或任何疗效百分比作为 metric。',
+          diseaseKey === 'spine_surgery' ? '脊柱外科请围绕非疗效指标输出，例如“神经功能窗口”“手术指征确认”“急症风险排查”“康复随访连续性”；不要写治愈率或手术成功率。' : '',
+          diseaseKey === 'dental' ? '牙科请围绕非疗效指标输出，例如“保牙判断窗口”“感染/疼痛风险管理”“根管后修复稳定性”“种植路径复杂度”“复诊维护连续性”。' : '',
+          diseaseKey === 'breast_cancer' ? '乳腺癌请围绕非疗效指标输出，例如“分期确认窗口”“保乳/全切决策”“腋窝风险管理”“辅助治疗连续性”“跨境随访基线”。' : '',
+        ].filter(Boolean),
+        previousFailure,
+        patientInput: compactInputForPrompt(input),
+        matchedKnowledge: {
+          diseaseKey,
+          disease: {
+            label: disease.label,
+            treatment: disease.treatment,
+            direction: disease.direction,
+            duration: disease.duration,
+          },
+          dataCompleteness,
+          missingMaterials,
+          decisionQuestions,
+          redFlags,
+          diseaseSpecificHints,
+          structuredMedicalFacts: {
+            summary: context.medicalFacts.summary,
+            diseaseSignals: context.medicalFacts.diseaseSignals,
+            qualityFlags: context.medicalFacts.qualityFlags,
+            timeline: context.medicalFacts.timeline.slice(0, 10),
+            documents: context.medicalFacts.documents.map((document) => ({
+              fileName: document.fileName,
+              reportType: document.reportType,
+              primaryDate: document.primaryDate,
+              diagnoses: document.diagnoses.slice(0, 4),
+              indicators: document.indicators.slice(0, 8),
+              evidence: document.sourceEvidence.slice(0, 5),
+              confidence: document.confidence,
+            })).slice(0, 8),
+          },
+          documentKnowledge: documentKnowledge.map((block) => ({
+            category: block.category,
+            guidance: limitText(block.guidance, 180),
+            evidenceSummary: limitText(block.evidenceSummary, 180),
+            keywords: block.keywords.slice(0, 8),
+          })).slice(0, 4),
+        },
+        currentReportContext: {
+          executiveSummary: patch.executiveSummary || ruleReport.executiveSummary,
+          clinicalAssessment: patch.clinicalAssessment || ruleReport.clinicalAssessment,
+          treatmentPathway: patch.treatmentPathway || ruleReport.treatmentPathway,
+          previousPrognosisComparison: previousValue || null,
+        },
       }),
     },
   ]
@@ -3459,12 +4650,13 @@ const callLlmProfessionalSectionRecovery = async (
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
       const content = await requestMedicalChatCompletion({
-        messages: buildProfessionalSectionRecoveryPrompt(context, ruleReport, patch, fields),
+        messages: fields.length === 1 && fields[0] === 'prognosisComparison'
+          ? buildProfessionalPrognosisRecoveryPrompt(context, ruleReport, patch)
+          : buildProfessionalSectionRecoveryPrompt(context, ruleReport, patch, fields),
         temperature: 0.18,
         stream: false,
         responseFormat: 'json_object',
-        maxAttempts: 1,
-        disableFallbackVariants: true,
+        maxAttempts: 2,
       })
       if (!content) return null
 
@@ -3478,10 +4670,23 @@ const callLlmProfessionalSectionRecovery = async (
         const value = recoveredPatch[field]
         if (value === undefined) return false
         const result = professionalReportSchema.shape[field].safeParse(value)
-        return result.success && !looksLikeUnavailableRecoverySection(field, result.data)
+        return result.success && !looksLikeUnavailableRecoverySection(field, result.data, context)
       })
 
       if (!validFields.length) {
+        if (process.env.DEBUG_REPORT_LLM === '1') {
+          console.warn(`[PROFESSIONAL_STAGE_SECTION_RECOVERY no useful fields] ${JSON.stringify(fields.map((field) => {
+            const value = recoveredPatch[field]
+            const result = value === undefined ? null : professionalReportSchema.shape[field].safeParse(value)
+            return {
+              field,
+              hasValue: value !== undefined,
+              issues: result && !result.success ? result.error.issues.slice(0, 6) : [],
+              unavailable: result?.success ? looksLikeUnavailableRecoverySection(field, result.data, context) : undefined,
+              value,
+            }
+          })).slice(0, 4000)}`)
+        }
         throw new Error(`professional section recovery returned no useful fields: requested=${fields.join(', ')}`)
       }
 
@@ -3490,7 +4695,7 @@ const callLlmProfessionalSectionRecovery = async (
         const value = recoveredPatch[field]
         if (value === undefined) return false
         const result = professionalReportSchema.shape[field].safeParse(value)
-        return !result.success || looksLikeUnavailableRecoverySection(field, result.success ? result.data : value)
+        return !result.success || looksLikeUnavailableRecoverySection(field, result.success ? result.data : value, context)
       })
       if (missingFields.length || invalidFields.length) {
         console.warn(`PROFESSIONAL_STAGE_SECTION_RECOVERY accepted partial fields: missing=${missingFields.join(', ') || 'none'}; invalid=${invalidFields.join(', ') || 'none'}`)
@@ -3508,42 +4713,142 @@ const callLlmProfessionalSectionRecovery = async (
   throw lastError instanceof Error ? lastError : new Error(String(lastError || 'professional section recovery failed'))
 }
 
+const getValidProfessionalRecoveryFields = (
+  fields: ProfessionalRecoveryField[],
+  patch: ProfessionalReportPatch,
+  context: ProfessionalContext,
+) => fields.filter((field) => {
+  const value = patch[field]
+  if (value === undefined) return false
+  const result = professionalReportSchema.shape[field].safeParse(value)
+  return result.success && !looksLikeUnavailableRecoverySection(field, result.data, context)
+})
+
+const applyProfessionalRecoveryPatch = (
+  basePatch: ProfessionalReportPatch,
+  recoveredPatch: ProfessionalReportPatch,
+  fields: ProfessionalRecoveryField[],
+  context: ProfessionalContext,
+) => {
+  const mergedPatch: ProfessionalReportPatch = { ...basePatch }
+  const recoveredFields: ProfessionalRecoveryField[] = []
+  const rejectedFields: ProfessionalRecoveryField[] = []
+
+  for (const field of fields) {
+    const value = recoveredPatch[field]
+    if (value === undefined) continue
+
+    const result = professionalReportSchema.shape[field].safeParse(value)
+    if (result.success && !looksLikeUnavailableRecoverySection(field, result.data, context)) {
+      mergedPatch[field] = result.data
+      recoveredFields.push(field)
+    } else {
+      rejectedFields.push(field)
+    }
+  }
+
+  return { mergedPatch, recoveredFields, rejectedFields }
+}
+
+const getRecoveryGroups = (fields: ProfessionalRecoveryField[]) => {
+  const fieldSet = new Set(fields)
+  return [
+    {
+      label: 'clinical',
+      fields: professionalClinicalRecoveryFields.filter((field) => fieldSet.has(field)),
+    },
+    {
+      label: 'planning',
+      fields: professionalPlanningRecoveryFields.filter((field) => fieldSet.has(field)),
+    },
+  ].filter((group) => group.fields.length)
+}
+
+const uniqueRecoveryFields = (fields: ProfessionalRecoveryField[]) => (
+  Array.from(new Set(fields))
+)
+
 const recoverProfessionalPatchSections = async (
   patch: ProfessionalReportPatch,
   context: ProfessionalContext,
   ruleReport: ProfessionalReport,
   options?: ProfessionalGenerationOptions,
 ) => {
-  const fields = getProfessionalRecoveryFields(patch)
+  const fields = getProfessionalRecoveryFields(patch, context)
   if (!fields.length) return patch
 
+  if (process.env.DEBUG_REPORT_LLM === '1') {
+    console.warn(`[Professional report recovery fields] ${JSON.stringify(Object.fromEntries(fields.map((field) => [
+      field,
+      describeProfessionalRecoveryFieldIssue(field, patch, context),
+    ]))).slice(0, 3000)}`)
+  }
+
   try {
-    const recoveredPatch = await trackGenerationPhase('criticalSectionRecovery', options, () => (
-      callLlmProfessionalSectionRecovery(context, ruleReport, patch, fields)
-    ))
-    if (!recoveredPatch) return patch
+    let mergedPatch: ProfessionalReportPatch = { ...patch }
+    const recoveredFields: ProfessionalRecoveryField[] = []
+    const rejectedFields: ProfessionalRecoveryField[] = []
+    const recoveryGroups = getRecoveryGroups(fields)
 
-    const recoveredFields: string[] = []
-    const rejectedFields: string[] = []
-    const mergedPatch: ProfessionalReportPatch = { ...patch }
+    const groupResults = await Promise.allSettled(recoveryGroups.map((group) => (
+      trackGenerationPhase(`criticalSectionRecovery:${group.label}`, options, () => (
+        callLlmProfessionalSectionRecovery(context, ruleReport, mergedPatch, group.fields)
+      ))
+    )))
 
-    for (const field of fields) {
-      const value = recoveredPatch[field]
-      if (value === undefined) continue
-
-      const result = professionalReportSchema.shape[field].safeParse(value)
-      if (result.success && !looksLikeUnavailableRecoverySection(field, result.data)) {
-        mergedPatch[field] = result.data
-        recoveredFields.push(professionalRecoveryFieldLabels[field])
-      } else {
-        rejectedFields.push(professionalRecoveryFieldLabels[field])
+    for (const [index, result] of groupResults.entries()) {
+      const group = recoveryGroups[index]
+      if (!group) continue
+      if (result.status === 'rejected') {
+        console.warn(`Professional report ${group.label} recovery unavailable: ${sanitizeGenerationError(result.reason).slice(0, 500)}`)
+        continue
       }
+      if (!result.value) continue
+
+      const applied = applyProfessionalRecoveryPatch(mergedPatch, result.value, group.fields, context)
+      mergedPatch = applied.mergedPatch
+      recoveredFields.push(...applied.recoveredFields)
+      rejectedFields.push(...applied.rejectedFields)
     }
+
+    const remainingFields = fields.filter((field) => (
+      professionalSingleFieldRecoveryFields.has(field) &&
+      !getValidProfessionalRecoveryFields([field], mergedPatch, context).length
+    ))
+
+    if (remainingFields.length) {
+      const recoveryResults = await Promise.allSettled(remainingFields.map((field) => (
+        trackGenerationPhase(`criticalSectionRecovery:${field}`, options, () => (
+          callLlmProfessionalSectionRecovery(context, ruleReport, mergedPatch, [field])
+        ))
+      )))
+
+      const recoveredPatch = recoveryResults.reduce<ProfessionalReportPatch>((acc, result, index) => {
+        const field = remainingFields[index]
+        if (result.status === 'fulfilled' && result.value?.[field] !== undefined) {
+          acc[field] = result.value[field]
+        } else if (result.status === 'rejected') {
+          console.warn(`Professional report ${field} recovery unavailable: ${sanitizeGenerationError(result.reason).slice(0, 500)}`)
+        }
+        return acc
+      }, {})
+
+      const applied = applyProfessionalRecoveryPatch(mergedPatch, recoveredPatch, remainingFields, context)
+      mergedPatch = applied.mergedPatch
+      recoveredFields.push(...applied.recoveredFields)
+      rejectedFields.push(...applied.rejectedFields)
+    }
+
+    const uniqueRecoveredFields = uniqueRecoveryFields(recoveredFields)
+    const finalMissingFields = fields.filter((field) => (
+      !getValidProfessionalRecoveryFields([field], mergedPatch, context).length
+    ))
+    const uniqueRejectedFields = uniqueRecoveryFields([...rejectedFields, ...finalMissingFields])
 
     mergedPatch.qualityFlags = unique([
       ...normalizeStringArray(patch.qualityFlags),
-      recoveredFields.length ? `医疗模型已补充关键章节：${recoveredFields.join('、')}。` : '',
-      rejectedFields.length ? `部分关键章节仍需补充资料后再确认：${rejectedFields.join('、')}。` : '',
+      uniqueRecoveredFields.length ? `医疗模型已补充关键章节：${uniqueRecoveredFields.map((field) => professionalRecoveryFieldLabels[field]).join('、')}。` : '',
+      uniqueRejectedFields.length ? `部分关键章节仍需补充资料后再确认：${uniqueRejectedFields.map((field) => professionalRecoveryFieldLabels[field]).join('、')}。` : '',
     ])
 
     return mergedPatch
@@ -3806,6 +5111,10 @@ const mergeLlmPatch = (
     const schema = professionalReportSchema.shape[key]
     const result = schema.safeParse(value)
     if (result.success) {
+      if (isProfessionalRecoveryField(key) && looksLikeUnavailableRecoverySection(key, result.data, context)) {
+        insufficientSections.push(label)
+        return unavailableValue
+      }
       appliedSections.push(label)
       return result.data as ProfessionalReport[K]
     }
@@ -3816,9 +5125,16 @@ const mergeLlmPatch = (
 
   const clinicalPatch = asObject(patch.clinicalAssessment)
   const unavailableClinicalAssessment = unavailableProfessionalSection('clinicalAssessment', context)
+  const diagnosticPatchForClinical = asObject(patch.diagnosticConclusion)
   const clinicalAssessmentDraft = clinicalPatch ? {
     ...unavailableClinicalAssessment,
     ...clinicalPatch,
+    workingDiagnosis: pickString(clinicalPatch, ['workingDiagnosis', 'diagnosis', 'working_diagnosis', 'summary']) ||
+      pickString(diagnosticPatchForClinical, ['finalImpression', 'impression', 'diagnosis', 'summary']) ||
+      ruleReport.clinicalAssessment.workingDiagnosis,
+    severity: pickString(clinicalPatch, ['severity', 'riskLevel', 'risk']) ||
+      pickString(diagnosticPatchForClinical, ['severityInterpretation', 'severity', 'riskLevel', 'risk']) ||
+      ruleReport.clinicalAssessment.severity,
     keyFindings: nonEmptyArray(clinicalPatch.keyFindings as string[] | undefined) || unavailableClinicalAssessment.keyFindings,
     redFlags: (clinicalPatch.redFlags as string[] | undefined) || unavailableClinicalAssessment.redFlags,
     missingMaterials: nonEmptyArray(clinicalPatch.missingMaterials as string[] | undefined) || unavailableClinicalAssessment.missingMaterials,
@@ -3865,10 +5181,10 @@ const mergeLlmPatch = (
     generatedBy: appliedSections.length ? 'llm' : 'rules',
   }))
 
-  return enforceGuardrails(assembledReport, context, ruleReport)
+  return finalizeProfessionalReport(assembledReport, context)
 }
 
-const enforceGuardrails = (report: ProfessionalReport, context: ProfessionalContext, ruleReport: ProfessionalReport) => {
+const finalizeProfessionalReport = (report: ProfessionalReport, context: ProfessionalContext) => {
   const baseReport = context.diseaseKey === 'dental'
     ? {
       ...report,
@@ -3899,23 +5215,6 @@ const enforceGuardrails = (report: ProfessionalReport, context: ProfessionalCont
     },
     generatedBy: baseReport.generatedBy,
   })
-
-  if (context.input.uploadedFiles.length === 0 && JSON.stringify(cleaned).includes('已读取上传')) {
-    console.warn('Professional report medical LLM claimed uploaded records without files; returning insufficient-data report')
-    return buildUnavailableProfessionalReport(context, ruleReport)
-  }
-
-  if (context.dataCompleteness < 45 && cleaned.clinicalAssessment.missingMaterials.length < 2) {
-    console.warn('Professional report medical LLM did not acknowledge low data completeness; returning insufficient-data report')
-    return buildUnavailableProfessionalReport(context, ruleReport)
-  }
-
-  if (!isLlmReportAlignedWithStructuredFacts(cleaned, context)) {
-    console.warn('Professional report medical LLM was not aligned with submitted medical records; returning insufficient-data report')
-    return buildUnavailableProfessionalReport(context, ruleReport)
-  }
-
-  ensureProfessionalReportCompleteness(cleaned, context)
   return cleaned
 }
 
@@ -3937,19 +5236,16 @@ const generateLlmProfessionalReport = async (
     console.warn(`Professional report planning medical LLM patch unavailable: ${sanitizeGenerationError(planningPatchResult.reason).slice(0, 500)}`)
   }
 
-  const combinedPatch = clinicalPatch || planningPatch
-    ? {
-      ...(clinicalPatch || {}),
-      ...(planningPatch || {}),
-      qualityFlags: [
-        ...normalizeStringArray(clinicalPatch?.qualityFlags),
-        ...normalizeStringArray(planningPatch?.qualityFlags),
-      ],
-    }
-    : null
-  const recoveredPatch = combinedPatch
-    ? await recoverProfessionalPatchSections(combinedPatch, context, ruleReport, options)
-    : null
+  const combinedPatch: ProfessionalReportPatch = {
+    ...(clinicalPatch || {}),
+    ...(planningPatch || {}),
+    qualityFlags: [
+      ...normalizeStringArray(clinicalPatch?.qualityFlags),
+      ...normalizeStringArray(planningPatch?.qualityFlags),
+      !clinicalPatch && !planningPatch ? '主请求未返回可用结构化内容，已启动关键章节批量恢复。' : '',
+    ],
+  }
+  const recoveredPatch = await recoverProfessionalPatchSections(combinedPatch, context, ruleReport, options)
 
   let llmReport: ProfessionalReport | null = null
   const mergeStartedAt = Date.now()
@@ -3964,10 +5260,6 @@ const generateLlmProfessionalReport = async (
   if (!llmReport) {
     llmReport = buildUnavailableProfessionalReport(context, ruleReport)
   }
-  if (llmReport.generatedBy !== 'llm') {
-    llmReport = buildUnavailableProfessionalReport(context, ruleReport)
-  }
-
   return llmReport
 }
 
