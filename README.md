@@ -78,6 +78,8 @@ API:
 
 - `GET /health`
 - `POST /api/report-submissions`
+- `POST /api/consultations`
+- `POST /api/dental-assessments` (multipart form with at least one image/PDF)
 
 CLI:
 

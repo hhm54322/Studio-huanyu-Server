@@ -88,6 +88,72 @@ CREATE INDEX IF NOT EXISTS idx_professional_report_submissions_created_at
 CREATE INDEX IF NOT EXISTS idx_professional_report_submissions_status
   ON professional_report_submissions (report_status);
 
+CREATE TABLE IF NOT EXISTS consultation_submissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  contact TEXT NOT NULL,
+  concern TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'submitted',
+  source TEXT NOT NULL DEFAULT 'web',
+  user_agent TEXT,
+  ip_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_consultation_submissions_created_at
+  ON consultation_submissions (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_consultation_submissions_contact_created_at
+  ON consultation_submissions (contact, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS dental_assessments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  submission_no TEXT NOT NULL UNIQUE,
+  request_id TEXT NOT NULL UNIQUE,
+  project_id TEXT NOT NULL DEFAULT '',
+  budget TEXT NOT NULL DEFAULT '',
+  visit_time TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  uploaded_files JSONB NOT NULL DEFAULT '[]'::jsonb,
+  status TEXT NOT NULL DEFAULT 'submitted',
+  source TEXT NOT NULL DEFAULT 'web',
+  user_agent TEXT,
+  ip_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dental_assessments_created_at
+  ON dental_assessments (created_at DESC);
+
+ALTER TABLE consultation_submissions
+  ADD COLUMN IF NOT EXISTS request_id TEXT;
+
+UPDATE consultation_submissions
+SET request_id = gen_random_uuid()::text
+WHERE request_id IS NULL;
+
+ALTER TABLE consultation_submissions
+  ALTER COLUMN request_id SET NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_consultation_submissions_request_id
+  ON consultation_submissions (request_id);
+
+ALTER TABLE dental_assessments
+  ADD COLUMN IF NOT EXISTS request_id TEXT;
+
+UPDATE dental_assessments
+SET request_id = gen_random_uuid()::text
+WHERE request_id IS NULL;
+
+ALTER TABLE dental_assessments
+  ALTER COLUMN request_id SET NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dental_assessments_request_id
+  ON dental_assessments (request_id);
+
 ALTER TABLE report_submissions
   ALTER COLUMN date_of_birth DROP NOT NULL,
   ALTER COLUMN nationality SET DEFAULT '',
@@ -126,6 +192,18 @@ EXECUTE FUNCTION set_updated_at();
 DROP TRIGGER IF EXISTS trg_professional_report_submissions_updated_at ON professional_report_submissions;
 CREATE TRIGGER trg_professional_report_submissions_updated_at
 BEFORE UPDATE ON professional_report_submissions
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_consultation_submissions_updated_at ON consultation_submissions;
+CREATE TRIGGER trg_consultation_submissions_updated_at
+BEFORE UPDATE ON consultation_submissions
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_dental_assessments_updated_at ON dental_assessments;
+CREATE TRIGGER trg_dental_assessments_updated_at
+BEFORE UPDATE ON dental_assessments
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 `

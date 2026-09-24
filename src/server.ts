@@ -6,6 +6,7 @@ import { config } from './config.js'
 import { closePool } from './db/pool.js'
 import { registerProfessionalReportSubmissionRoutes } from './routes/professionalReportSubmissions.js'
 import { registerReportSubmissionRoutes } from './routes/reportSubmissions.js'
+import { registerPatientSubmissionRoutes } from './routes/patientSubmissions.js'
 
 const app = Fastify({
   logger: true,
@@ -28,6 +29,7 @@ app.get('/health', async () => ({ ok: true }))
 
 await registerReportSubmissionRoutes(app)
 await registerProfessionalReportSubmissionRoutes(app)
+await registerPatientSubmissionRoutes(app)
 
 let shuttingDown = false
 
