@@ -1,6 +1,10 @@
 import { closePool, pool } from './pool.js'
+import { migrateExpertReview } from '../expert/migration.js'
+import { migrateContactAnalytics } from '../analytics/migration.js'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const sql = `
+export const baseMigrationSql = `
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS report_submissions (
@@ -208,9 +212,13 @@ FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 `
 
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 try {
-  await pool.query(sql)
+  await pool.query(baseMigrationSql)
+  await migrateExpertReview(pool)
+  await migrateContactAnalytics(pool)
   console.log('Database migration completed.')
 } finally {
   await closePool()
+}
 }

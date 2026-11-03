@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { config } from '../config.js'
+import { appendExpertKnowledge } from '../expert/knowledge.js'
 
 export type MedicalLlmMessage = {
   role: 'system' | 'user' | 'assistant'
@@ -7,6 +8,7 @@ export type MedicalLlmMessage = {
 }
 
 type RequestOptions = {
+  expertKnowledgeModules?: string[]
   messages: MedicalLlmMessage[]
   temperature: number
   timeoutMs?: number
@@ -241,6 +243,7 @@ const getRequestVariants = (settings: ProviderSettings, options: RequestOptions)
 export const requestMedicalChatCompletion = async (options: RequestOptions) => {
   const settings = getProviderSettings()
   if (!settings) return null
+  options = { ...options, messages: appendExpertKnowledge(options.messages, options.expertKnowledgeModules) }
 
   const metrics = medicalLlmUsageStorage.getStore()
   const requestUsage: MedicalLlmRequestUsage | null = metrics
@@ -261,7 +264,9 @@ export const requestMedicalChatCompletion = async (options: RequestOptions) => {
   }
 
   const variants = getRequestVariants(settings, options)
-  const maxAttempts = Math.max(options.maxAttempts ?? 2, 3)
+  const maxAttempts = options.expertKnowledgeModules?.length === 0
+    ? Math.max(1, Math.min(options.maxAttempts ?? 1, 2))
+    : Math.max(options.maxAttempts ?? 2, 3)
   let lastError = ''
   let finalError = ''
 

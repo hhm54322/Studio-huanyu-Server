@@ -7,6 +7,9 @@ import { closePool } from './db/pool.js'
 import { registerProfessionalReportSubmissionRoutes } from './routes/professionalReportSubmissions.js'
 import { registerReportSubmissionRoutes } from './routes/reportSubmissions.js'
 import { registerPatientSubmissionRoutes } from './routes/patientSubmissions.js'
+import { registerExpertReviewRoutes } from './routes/expertReview.js'
+import { registerContactAnalyticsRoutes } from './routes/contactAnalytics.js'
+import { closeAnalyticsPool } from './analytics/store.js'
 
 const app = Fastify({
   logger: true,
@@ -30,6 +33,8 @@ app.get('/health', async () => ({ ok: true }))
 await registerReportSubmissionRoutes(app)
 await registerProfessionalReportSubmissionRoutes(app)
 await registerPatientSubmissionRoutes(app)
+await registerExpertReviewRoutes(app)
+await registerContactAnalyticsRoutes(app)
 
 let shuttingDown = false
 
@@ -39,6 +44,7 @@ const shutdown = async () => {
   app.log.info('Shutting down server...')
   await app.close()
   await closePool()
+  await closeAnalyticsPool()
 }
 
 process.on('SIGINT', shutdown)

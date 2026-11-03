@@ -14,6 +14,12 @@ exports/
 *.csv
 *.jsonl
 
+# User uploads and local diagnostic/evaluation material are runtime data.
+uploads/
+artifacts/
+tmp/
+temp/
+
 # Logs
 logs/
 *.log
@@ -23,6 +29,7 @@ pnpm-debug.log*
 
 # OCR language cache
 *.traineddata
+models/
 
 # TypeScript cache
 *.tsbuildinfo

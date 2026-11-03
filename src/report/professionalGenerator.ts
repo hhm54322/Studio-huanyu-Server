@@ -1,5 +1,8 @@
 import type { ProfessionalReportSubmissionInput } from '../validators/professionalReportSubmission.js'
 import { jsonrepair } from 'jsonrepair'
+import { withExpertKnowledge } from '../expert/knowledge.js'
+import { matchProfile } from '../expert/profile.js'
+import { canonicalModule } from '../expert/matching.js'
 import { getKnowledgeForProfessionalReport, type DocumentKnowledgeBlock } from './documentKnowledge.js'
 import {
   dentalAdvantages,
@@ -3090,6 +3093,7 @@ const callLlm = async (context: ProfessionalContext, ruleReport: ProfessionalRep
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const content = await requestMedicalChatCompletion({
       messages: buildPrompt(context, ruleReport),
+      expertKnowledgeModules: Object.keys(professionalReportSchema.shape).map(canonicalModule).filter((m): m is NonNullable<typeof m> => Boolean(m)),
       temperature: 0.25,
       stream: false,
         maxAttempts: 2,
@@ -3153,6 +3157,7 @@ const callLlmPatchStage = async (
     try {
       const content = await requestMedicalChatCompletion({
         messages,
+        expertKnowledgeModules: requiredFields.map(canonicalModule).filter((m): m is NonNullable<typeof m> => Boolean(m)),
         temperature: 0.2,
         stream: false,
         responseFormat: 'json_object',
@@ -3216,6 +3221,7 @@ const callLlmPatch = async (context: ProfessionalContext, ruleReport: Profession
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const content = await requestMedicalChatCompletion({
       messages: buildClinicalPatchPrompt(context, ruleReport),
+      expertKnowledgeModules: clinicalPatchFields.map(canonicalModule).filter((m): m is NonNullable<typeof m> => Boolean(m)),
       temperature: 0.2,
       stream: false,
       maxAttempts: 2,
@@ -4653,6 +4659,7 @@ const callLlmProfessionalSectionRecovery = async (
         messages: fields.length === 1 && fields[0] === 'prognosisComparison'
           ? buildProfessionalPrognosisRecoveryPrompt(context, ruleReport, patch)
           : buildProfessionalSectionRecoveryPrompt(context, ruleReport, patch, fields),
+        expertKnowledgeModules: fields.map(canonicalModule).filter((m): m is NonNullable<typeof m> => Boolean(m)),
         temperature: 0.18,
         stream: false,
         responseFormat: 'json_object',
@@ -5269,6 +5276,9 @@ export const generateProfessionalReport = async (
   options?: ProfessionalGenerationOptions,
 ): Promise<ProfessionalReport> => {
   const context = buildContext(input, submissionNo)
+  const profile = matchProfile({ ...input.medical, summaries: input.parsedFiles.map(f => f.summary) }, context.medicalFacts,
+    [input.patient.fullName, input.patient.phone, input.patient.email, input.patient.dateOfBirth])
+  return withExpertKnowledge('professional', submissionNo, context.diseaseKey, profile, async () => {
   const ruleReport = cleanReport(buildRuleReport(context))
   const generationAttempts = 1
   let lastError: unknown
@@ -5289,4 +5299,5 @@ export const generateProfessionalReport = async (
   const message = sanitizeGenerationError(lastError)
   console.warn(`Professional report LLM generation did not produce a reliable report; returning insufficient-data report: ${message.slice(0, 500)}`)
   return sanitizeReportText(withProfessionalTabs(buildUnavailableProfessionalReport(context, ruleReport), context))
+  })
 }

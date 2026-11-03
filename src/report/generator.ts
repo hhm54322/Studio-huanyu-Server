@@ -1,5 +1,7 @@
 import type { ReportSubmissionInput } from '../validators/reportSubmission.js'
 import { jsonrepair } from 'jsonrepair'
+import { withExpertKnowledge } from '../expert/knowledge.js'
+import { matchProfile } from '../expert/profile.js'
 import { getKnowledgeForFreeReport, type DocumentKnowledgeBlock } from './documentKnowledge.js'
 import {
   dentalAdvantages,
@@ -4430,6 +4432,7 @@ const callLlmPatch = async (
         messages: coreOnly
           ? buildCorePatchPrompt(context, ruleReport, previousError)
           : buildPatchPrompt(context, ruleReport, previousError),
+        expertKnowledgeModules: ['assessment','pathology','treatment','risk','cost','hospitals','comparison','itinerary','next'],
         temperature: 0.2,
         stream: false,
         responseFormat: 'json_object',
@@ -4529,6 +4532,7 @@ const callLlmHospitalDetailsPatch = async (
   try {
     const content = await requestMedicalChatCompletion({
       messages: buildHospitalDetailsPrompt(context, ruleReport, patch),
+      expertKnowledgeModules: ['hospitals','topDoctors'],
       temperature: 0.15,
       stream: false,
       responseFormat: 'json_object',
@@ -4567,6 +4571,7 @@ const callLlmPackagePatch = async (
   try {
     const content = await requestMedicalChatCompletion({
       messages: buildPackagePrompt(context, ruleReport, patch, previousError),
+      expertKnowledgeModules: ['service'],
       temperature: 0.12,
       stream: false,
       responseFormat: 'json_object',
@@ -4634,6 +4639,7 @@ const callLlmSupplementalPatch = async (
   try {
     const content = await requestMedicalChatCompletion({
       messages: buildSupplementalPatchPrompt(context, ruleReport),
+      expertKnowledgeModules: ['treatment','risk','assessment','comparison','itinerary','service','next'],
       temperature: 0.1,
       stream: false,
       responseFormat: 'json_object',
@@ -4696,6 +4702,7 @@ const callLlmCostBreakdownPatch = async (
   try {
     const content = await requestMedicalChatCompletion({
       messages: buildCostBreakdownPrompt(context, ruleReport, patch, previousError),
+      expertKnowledgeModules: ['cost'],
       temperature: 0.1,
       stream: false,
       responseFormat: 'json_object',
@@ -4760,6 +4767,7 @@ const callLlmAdvancedCarePatch = async (
   try {
     const content = await requestMedicalChatCompletion({
       messages: buildAdvancedCarePrompt(context, ruleReport, patch, previousError),
+      expertKnowledgeModules: ['advanced'],
       temperature: 0.1,
       stream: false,
       responseFormat: 'json_object',
@@ -5527,6 +5535,9 @@ export const generateReport = async (
     documentKnowledge: getKnowledgeForFreeReport(input, match.key),
     medicalFacts,
   }
+  const profile = matchProfile({ chiefComplaint: input.basicInfo.chiefComplaint, careNeed: input.basicInfo.careNeed, careNeedOther: input.basicInfo.careNeedOther, summaries: input.parsedFiles.map(f => f.summary) }, medicalFacts,
+    [input.basicInfo.fullName, input.basicInfo.phone, input.basicInfo.email, input.basicInfo.dateOfBirth])
+  return withExpertKnowledge('free', submissionNo, match.key, profile, async () => {
   const ruleReport = buildRuleReport(context)
   try {
     const llmReport = await generateLlmFreeReport(context, ruleReport, options)
@@ -5535,4 +5546,5 @@ export const generateReport = async (
     console.warn(`Report LLM generation failed after section retries; returning section-level insufficient report: ${sanitizeGenerationError(error).slice(0, 1000)}`)
     return sanitizeReportText(withFreeLayoutSections(buildUnavailableFreeReport(context, ruleReport), context))
   }
+  })
 }

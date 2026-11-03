@@ -2,6 +2,25 @@
 
 Local backend for report submissions.
 
+## First-party contact analytics (M05)
+
+WhatsApp clicks are collected by `/api/analytics/events` and stored separately from patient data. Authenticated admins can query `/api/expert/analytics/contacts`; `npm run contacts:stats -- --group-by campaign,keyword --format json` also pulls paginated JSON/CSV from the server. Metrics are clicks and anonymous-browser counts, not confirmed conversations or payments. Run `db:migrate` before publishing the frontend. API, filters, identity/queue limits, test isolation and release order are documented in [docs/contact-analytics.md](docs/contact-analytics.md).
+
+## Expert review workbench
+
+正式入口 `/expert-review/` 使用本服务 `/api/expert/`，需要 `EXPERT_REVIEW_ENABLED=true`。完整边界和入库门禁见 [docs/expert-review-flow.md](docs/expert-review-flow.md)。
+
+- 专家：读取全部已生成病例、脱敏输入及病历副本；只修改自己的审阅。
+- 管理员/资料处理人员：逐页框选身份信息后发布私密的不可逆脱敏副本；与医学知识确认不是同一权限。
+- 专人确认：角色/状态/门禁预留为后续功能，暂不开通。当前设置 `EXPERT_KNOWLEDGE_REQUIRE_CONFIRMATION=false`，专家提交所勾选的医学修改/补充后直接发布；未确认候选和草稿仍不能被引用。
+- 生成器使用本地 E5 语义向量 + BM25/关键词混合检索，经条件硬拦截及现有医疗模型适用性核验后，按报告模块提供知识并记录实际提供项的版本来源；没有可用知识时保持原生成输入，不覆盖历史报告。管理员或原专家可撤回知识，后续新生成不再引用。将开关改为 `true` 可恢复需专人确认模式。
+
+设置 `EXPERT_EMBEDDING_MODEL_DIR` 为固定版本的本地 ONNX 模型目录，完整文件/预算/故障边界见流程文档。运行时不下载模型；通用检索模型与工程相关分不等于临床置信度。`npm run expert:matching-check` 仅使用合成文本测试真实医疗 API，不写病例库。
+
+后台开通账号：`EXPERT_ACCOUNT_PASSWORD=<密码> npm run expert:account -- create <账号> expert`；正式账号至少14位密码。测试账号可显式加 `--test-account`，禁止前端硬编码认证。禁用账号用 `npm run expert:account -- disable <账号>`。
+
+自动测试 `npm run test:expert` 只允许独立的 `huanyu_expert_qa` 数据库；会清理并播种该测试库，**绝不能在业务数据库运行**。通过 `HUANYU_ENV_FILE` 指定隔离环境文件，避免默认 `.env` 覆盖测试数据库设置。
+
 ## Local Setup
 
 ```bash

@@ -1,6 +1,6 @@
 import dotenv from 'dotenv'
 
-dotenv.config({ override: true })
+dotenv.config({ path: process.env.HUANYU_ENV_FILE || '.env', override: true })
 
 export const config = {
   port: Number(process.env.PORT || 3000),

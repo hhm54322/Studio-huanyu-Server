@@ -32,7 +32,7 @@ export const reportSubmissionSchema = z.object({
     idType: z.enum(idTypes).or(z.literal('')).optional().default(''),
     idNumber: z.string().trim().max(80).optional().default(''),
     phone: z.string().trim().max(40).optional().default('').refine((value) => !value || phoneRegex.test(value), 'Invalid phone number'),
-    email: z.string().trim().min(1).max(160).refine((value) => z.string().email().safeParse(value).success, 'Invalid email'),
+    email: z.string().trim().max(160).default('').refine((value) => !value || z.string().email().safeParse(value).success, 'Invalid email'),
     city: z.string().trim().max(120).optional().default(''),
     preferredLanguage: z.string().trim().max(40).optional().default(''),
     visitPurpose: z.string().trim().min(1).max(80),
