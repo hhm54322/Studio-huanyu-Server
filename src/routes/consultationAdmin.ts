@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z, ZodError } from 'zod'
 import { getConsultationSubmission, listConsultationSubmissions, updateConsultationStatus } from '../db/patientSubmissions.js'
 import { consultationListQuerySchema, consultationStatusSchema } from '../validators/patientSubmissions.js'
@@ -32,7 +32,10 @@ export async function registerConsultationAdminRoutes(parent: FastifyInstance) {
       if (!item) throw new ExpertError(404, 'NOT_FOUND', '咨询记录不存在。')
       return { success: true, item }
     })
-    app.patch('/consultations/:id/status', async request => {
+    // The public site is fronted by CDN infrastructure that only forwards the
+    // common HTTP verbs. Keep PATCH for direct/internal callers, and expose the
+    // same CSRF-protected operation over POST for the production workbench.
+    const updateStatus = async (request: FastifyRequest) => {
       const session = await getSession(request)
       requireCsrf(request, session)
       requireRole(session, ['admin'])
@@ -42,6 +45,8 @@ export async function registerConsultationAdminRoutes(parent: FastifyInstance) {
       if (!item) throw new ExpertError(404, 'NOT_FOUND', '咨询记录不存在。')
       await audit(session.id, 'consultation_status_updated', id, { status: input.status })
       return { success: true, item }
-    })
+    }
+    app.patch('/consultations/:id/status', updateStatus)
+    app.post('/consultations/:id/status', updateStatus)
   }, { prefix: '/api/expert' })
 }

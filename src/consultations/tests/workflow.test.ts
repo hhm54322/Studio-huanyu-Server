@@ -25,6 +25,7 @@ let ip = 0
 const post = (body: Record<string, unknown>, customOrigin = origin, remote = `192.0.2.${++ip}`) => app.inject({ method: 'POST', url: '/api/consultations', payload: body, headers: { origin: customOrigin }, remoteAddress: remote })
 const list = (query = '', cookie = admin) => app.inject({ method: 'GET', url: `/api/expert/consultations${query}`, headers: { cookie } })
 const patch = (status: string, csrf = 'qa-csrf', cookie = admin) => app.inject({ method: 'PATCH', url: `/api/expert/consultations/${id}/status`, headers: { cookie, origin, 'x-expert-csrf': csrf }, payload: { status } })
+const updateViaPost = (status: string, csrf = 'qa-csrf', cookie = admin) => app.inject({ method: 'POST', url: `/api/expert/consultations/${id}/status`, headers: { cookie, origin, 'x-expert-csrf': csrf }, payload: { status } })
 
 before(async () => {
   await pool.query(baseMigrationSql)
@@ -110,4 +111,16 @@ test('rate limiting bounds public submission abuse independently per address', a
   const limited = await post(payload(), origin, '192.0.2.250')
   assert.equal(limited.statusCode, 429); assert.equal(limited.headers['retry-after'], '60')
   assert.equal((await post(payload(), origin, '192.0.2.251')).statusCode, 201)
+})
+test('CDN-compatible status POST keeps administrator, CSRF and audit protections', async () => {
+  assert.equal((await updateViaPost('in_progress', 'qa-csrf', '')).statusCode, 401)
+  assert.equal((await updateViaPost('in_progress', 'qa-csrf', expert)).statusCode, 403)
+  assert.equal((await updateViaPost('in_progress', '')).statusCode, 403)
+  assert.equal((await updateViaPost('invalid')).statusCode, 400)
+  const before = (await pool.query("SELECT count(*)::int AS n FROM expert_audit WHERE action='consultation_status_updated' AND resource_id=$1", [id])).rows[0].n
+  const response = await updateViaPost('in_progress')
+  assert.equal(response.statusCode, 200)
+  assert.equal(response.json().item.status, 'in_progress')
+  assert.equal(response.headers['cache-control'], 'private, no-store')
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM expert_audit WHERE action='consultation_status_updated' AND resource_id=$1", [id])).rows[0].n, before + 1)
 })
