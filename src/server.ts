@@ -7,12 +7,14 @@ import { closePool } from './db/pool.js'
 import { registerProfessionalReportSubmissionRoutes } from './routes/professionalReportSubmissions.js'
 import { registerReportSubmissionRoutes } from './routes/reportSubmissions.js'
 import { registerPatientSubmissionRoutes } from './routes/patientSubmissions.js'
+import { registerConsultationAdminRoutes } from './routes/consultationAdmin.js'
 import { registerExpertReviewRoutes } from './routes/expertReview.js'
 import { registerContactAnalyticsRoutes } from './routes/contactAnalytics.js'
 import { closeAnalyticsPool } from './analytics/store.js'
 
 const app = Fastify({
   logger: true,
+  trustProxy: ['127.0.0.1', '::1'],
   connectionTimeout: config.httpRequestTimeoutMs,
   requestTimeout: config.httpRequestTimeoutMs,
 })
@@ -33,6 +35,7 @@ app.get('/health', async () => ({ ok: true }))
 await registerReportSubmissionRoutes(app)
 await registerProfessionalReportSubmissionRoutes(app)
 await registerPatientSubmissionRoutes(app)
+await registerConsultationAdminRoutes(app)
 await registerExpertReviewRoutes(app)
 await registerContactAnalyticsRoutes(app)
 

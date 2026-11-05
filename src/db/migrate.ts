@@ -1,4 +1,5 @@
 import { closePool, pool } from './pool.js'
+import { consultationMigrationSql } from './consultationsMigration.js'
 import { migrateExpertReview } from '../expert/migration.js'
 import { migrateContactAnalytics } from '../analytics/migration.js'
 import path from 'node:path'
@@ -215,6 +216,7 @@ EXECUTE FUNCTION set_updated_at();
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 try {
   await pool.query(baseMigrationSql)
+  await pool.query(consultationMigrationSql)
   await migrateExpertReview(pool)
   await migrateContactAnalytics(pool)
   console.log('Database migration completed.')

@@ -12,6 +12,7 @@
     "expert:account": "tsx src/cli/expertAccount.ts",
     "test:expert": "tsx --test src/expert/tests/*.test.ts",
     "test:analytics": "tsx --test src/analytics/tests/*.test.ts",
+    "test:consultations": "tsx --test src/consultations/tests/*.test.ts",
     "contacts:stats": "tsx src/cli/contactStats.ts",
     "expert:matching-check": "tsx src/cli/expertMatchingCheck.ts",
     "reports:check-ocr": "tsx src/scripts/checkMedicalOcr.ts",

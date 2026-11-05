@@ -19,7 +19,7 @@ export const analyticsPages = [
 export const marketingKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'source_id'] as const
 const marketingLabel = z.string().trim().min(1).max(80).regex(/^[\p{L}\p{N}_. -]+$/u)
 const filterLabel = z.union([z.literal(''), marketingLabel])
-export const entrySchema = z.string().regex(/^(?:floating|footer-shared|footer-report|footer-\d+-\d+)$/)
+export const entrySchema = z.string().regex(/^(?:floating|footer-shared|footer-report|footer-\d+-\d+|m06-whatsapp|m08-whatsapp|m08-direct)$/)
 const attributionSchema = z.object({
   utm_source: marketingLabel.optional(), utm_medium: marketingLabel.optional(),
   utm_campaign: marketingLabel.optional(), utm_content: marketingLabel.optional(),

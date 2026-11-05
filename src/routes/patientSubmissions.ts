@@ -5,8 +5,12 @@ import { ZodError } from 'zod'
 import { createConsultationSubmission, createDentalAssessment, type DentalUploadedFile } from '../db/patientSubmissions.js'
 import { saveReportUpload } from './professionalReportSubmissions.js'
 import { consultationSubmissionSchema, dentalAssessmentSchema } from '../validators/patientSubmissions.js'
+import { ExpertError } from '../expert/schema.js'
+import { contactAnalyticsClientIp } from './contactAnalytics.js'
+import { config } from '../config.js'
 
 const errorResponse = (error: unknown) => {
+  if (error instanceof ExpertError) return { status: error.status, body: { success: false, error: error.code, message: error.message } }
   if (error instanceof ZodError) {
     return { status: 400, body: { success: false, error: 'VALIDATION_ERROR', message: 'Invalid submission payload', issues: error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })) } }
   }
@@ -21,13 +25,23 @@ const errorResponse = (error: unknown) => {
 }
 
 export const registerPatientSubmissionRoutes = async (app: FastifyInstance) => {
-  app.post('/api/consultations', async (request, reply) => {
+  const requests = new Map<string, { count: number; expires: number }>()
+  const origins = new Set(`${config.corsOrigin},https://www.huanyumedical.com,https://huanyumedical.com`.split(',').map(value => value.trim()))
+  app.post('/api/consultations', { bodyLimit: 8192 }, async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store').header('X-Robots-Tag', 'noindex, nofollow')
+    if (request.headers.origin && !origins.has(request.headers.origin)) return reply.code(403).send({ success: false, error: 'INVALID_ORIGIN' })
+    const now = Date.now()
+    for (const [key, value] of requests) if (value.expires <= now) requests.delete(key)
+    const key = contactAnalyticsClientIp(request)
+    const current = requests.get(key) || { count: 0, expires: now + 60_000 }
+    if (!requests.has(key) && requests.size >= 10_000 || ++current.count > 15) return reply.header('Retry-After', '60').code(429).send({ success: false, error: 'CONSULTATION_RATE_LIMIT' })
+    requests.set(key, current)
     try {
       const input = consultationSubmissionSchema.parse(request.body)
       const created = await createConsultationSubmission(input, { userAgent: request.headers['user-agent'], ip: request.ip })
       return reply.code(created.created ? 201 : 200).send({ success: true, submissionId: created.id, status: created.status, createdAt: created.created_at })
     } catch (error) {
-      request.log.error(error)
+      request.log.warn({ code: error instanceof ExpertError ? error.code : error instanceof ZodError ? 'VALIDATION_ERROR' : 'CONSULTATION_FAILED' }, 'Consultation submission failed')
       const result = errorResponse(error)
       return reply.code(result.status).send(result.body)
     }
